@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="勤怠">
+<title>勤怠記録</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:#F2F2F7;color:#1C1C1E;min-height:100vh;}
+.wrap{padding:1rem;max-width:430px;margin:0 auto;padding-bottom:2rem;}
+.clock-time{font-size:42px;font-weight:200;color:#1C1C1E;letter-spacing:-1px;text-align:center;font-variant-numeric:tabular-nums;}
+.clock-date{font-size:13px;color:#8E8E93;text-align:center;margin-top:2px;margin-bottom:.9rem;}
+.name-card{background:#fff;border-radius:14px;padding:1rem 1.1rem;margin-bottom:.9rem;display:flex;align-items:center;justify-content:space-between;}
+.name-label{font-size:13px;color:#8E8E93;}
+.name-value{font-size:16px;font-weight:500;color:#1C1C1E;}
+.btn-change{font-size:12px;color:#007AFF;background:none;border:none;cursor:pointer;padding:4px 8px;}
+.gps-card{background:#fff;border-radius:14px;padding:.8rem 1.1rem;margin-bottom:.9rem;display:flex;align-items:center;gap:.75rem;}
+.gps-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.gps-dot.inside{background:#34C759;}
+.gps-dot.outside{background:#FF9500;}
+.gps-dot.checking{background:#8E8E93;animation:blink 1s infinite;}
+.gps-dot.error{background:#FF3B30;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.gps-text{font-size:13px;color:#1C1C1E;}
+.gps-sub{font-size:11px;color:#8E8E93;margin-top:2px;}
+.status-card{background:#fff;border-radius:14px;padding:.8rem 1.1rem;margin-bottom:.9rem;text-align:center;}
+.status-label{font-size:11px;color:#8E8E93;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px;}
+.status-value{font-size:15px;font-weight:500;color:#1C1C1E;}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:.9rem;}
+.btn-in,.btn-out,.btn-telework{padding:1.1rem 0;border-radius:14px;font-size:18px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s,transform .1s;-webkit-appearance:none;}
+.btn-in{background:#34C759;color:#fff;}
+.btn-out{background:#FF3B30;color:#fff;}
+.btn-telework{background:#007AFF;color:#fff;width:100%;margin-bottom:.5rem;font-size:16px;padding:.9rem 0;}
+.btn-biz{background:#5856D6;color:#fff;width:100%;margin-bottom:.9rem;font-size:16px;padding:.9rem 0;border-radius:14px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s,transform .1s;-webkit-appearance:none;}
+.btn-biz:disabled{opacity:.3;cursor:not-allowed;}
+.btn-biz:not(:disabled):active{transform:scale(.97);}
+.btn-in:disabled,.btn-out:disabled,.btn-telework:disabled{opacity:.3;cursor:not-allowed;}
+.btn-in:not(:disabled):active,.btn-out:not(:disabled):active,.btn-telework:not(:disabled):active{transform:scale(.97);}
+.ot-banner{border-radius:14px;padding:.85rem 1.1rem;margin-bottom:.9rem;display:flex;align-items:center;justify-content:space-between;}
+.ot-banner.none{background:#fff;}
+.ot-banner.over{background:#FFF2F1;}
+.ot-left{font-size:12px;color:#8E8E93;}
+.ot-left.over{color:#C0392B;}
+.ot-right{font-size:26px;font-weight:300;color:#1C1C1E;font-variant-numeric:tabular-nums;}
+.ot-right.over{color:#FF3B30;}
+.ot-sub{font-size:11px;color:#8E8E93;margin-top:2px;}
+.ot-sub.over{color:#C0392B;}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.9rem;}
+.stat{background:#fff;border-radius:14px;padding:.75rem 1rem;}
+.stat-label{font-size:11px;color:#8E8E93;margin-bottom:4px;}
+.stat-val{font-size:18px;font-weight:300;color:#1C1C1E;font-variant-numeric:tabular-nums;}
+.stat-val.ot{color:#FF3B30;}
+.info-box{background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:.9rem;font-size:11px;color:#8E8E93;line-height:1.8;}
+.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:rgba(28,28,30,.85);backdrop-filter:blur(10px);border-radius:20px;padding:.6rem 1.2rem;font-size:13px;color:#fff;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:100;}
+.toast.show{opacity:1;}
+/* 名前入力モーダル */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
+.overlay.open{display:flex;}
+.modal{background:#fff;border-radius:20px;padding:1.5rem;width:300px;max-width:90vw;text-align:center;}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:.5rem;color:#1C1C1E;}
+.modal-sub{font-size:13px;color:#8E8E93;margin-bottom:1.25rem;}
+.modal input{width:100%;padding:.75rem 1rem;border:0.5px solid #C7C7CC;border-radius:12px;font-size:16px;color:#1C1C1E;outline:none;margin-bottom:1rem;background:#F2F2F7;}
+.modal input:focus{border-color:#007AFF;}
+.btn-modal-ok{width:100%;padding:.75rem 0;border-radius:12px;font-size:16px;font-weight:500;cursor:pointer;border:none;background:#34C759;color:#fff;}
+.btn-modal-ok:disabled{opacity:.3;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="clock-time" id="clockTime">--:--:--</div>
+  <div class="clock-date" id="clockDate"></div>
+
+  <!-- 名前表示 -->
+  <div class="name-card">
+    <div>
+      <div class="name-label">氏名</div>
+      <div class="name-value" id="nameDisplay">--</div>
+    </div>
+    <button class="btn-change" onclick="openNameModal()">変更</button>
+  </div>
+
+  <!-- GPS状態 -->
+  <div class="gps-card">
+    <div class="gps-dot checking" id="gpsDot"></div>
+    <div>
+      <div class="gps-text" id="gpsText">位置情報を確認中...</div>
+      <div class="gps-sub" id="gpsSub">しばらくお待ちください</div>
+    </div>
+  </div>
+
+  <!-- 今日のステータス -->
+  <div class="status-card">
+    <div class="status-label">今日のステータス</div>
+    <div class="status-value" id="statusText">未打刻</div>
+  </div>
+
+  <!-- 出勤・退勤ボタン -->
+  <div class="btn-row">
+    <button class="btn-in" id="btnIn" onclick="clockIn()" disabled>出勤</button>
+    <button class="btn-out" id="btnOut" onclick="clockOut()" disabled>退勤</button>
+  </div>
+
+  <!-- 範囲外ボタン（テレワーク・出張等） -->
+  <div id="outsideBtns" style="display:none;">
+    <button class="btn-telework" id="btnTelework" onclick="clockTelework()" disabled>
+      🏠 テレワーク出勤
+    </button>
+    <button class="btn-biz" id="btnBiz" onclick="clockBiz()" disabled>
+      🚗 出張等
+    </button>
+  </div>
+
+  <!-- 時間外バナー -->
+  <div class="ot-banner none" id="otBanner">
+    <div>
+      <div class="ot-left" id="otLabel">今期の時間外</div>
+      <div class="ot-sub" id="otSub">--</div>
+    </div>
+    <div class="ot-right" id="otValue">0h00m</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-label">今日の実労働時間</div><div class="stat-val" id="todayH">--</div></div>
+    <div class="stat"><div class="stat-label">今日の時間外</div><div class="stat-val" id="todayOT">--</div></div>
+    <div class="stat"><div class="stat-label">今期の出勤日数</div><div class="stat-val" id="periodDays">0日</div></div>
+    <div class="stat"><div class="stat-label">今期の総実労働時間</div><div class="stat-val" id="monthH">0h</div></div>
+  </div>
+
+  <div class="info-box">
+    休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
+    時間外：8:00より前 ＋ 17:00より後　／　締め：毎月21日〜翌20日<br>
+    📍 会社から100m以内で出社打刻、範囲外はテレワーク
+  </div>
+</div>
+
+<!-- 名前入力モーダル -->
+<div class="overlay" id="nameOverlay">
+  <div class="modal">
+    <div class="modal-title">氏名を入力してください</div>
+    <div class="modal-sub">初回のみ設定します</div>
+    <input type="text" id="nameInput" placeholder="例：山田 太郎" maxlength="20">
+    <button class="btn-modal-ok" id="btnNameOk" onclick="saveName()" disabled>設定する</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============ 設定 ============
+const COMPANY_LAT = 35.61093197454948;
+const COMPANY_LNG = 139.00294228297872;
+const ALLOWED_RADIUS = 100; // メートル
+// スプレッドシートのURL（後で設定）
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbywC3mElNFwWqNsdlMwWCgqNPIH96KLeIrBIdva7csCBgP0QFuBfasTCicLj8DCbDXJ/exec';
+
+const BREAK_MINS=65, WORK_START=8*60, WORK_END=17*60;
+const DAILY_MINS=(WORK_END-WORK_START)-BREAK_MINS;
+const MONTH_WORK_DAYS=20;
+
+let records = JSON.parse(localStorage.getItem('kintai_company')||'[]');
+let userName = localStorage.getItem('kintai_name')||'';
+let gpsStatus = 'checking'; // checking / inside / outside / error
+let timerInt;
+
+function pad(n){return String(n).padStart(2,'0');}
+function todayKey(){const n=new Date();return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;}
+function nowTimeStr(){const n=new Date();return `${pad(n.getHours())}:${pad(n.getMinutes())}`;}
+function toMins(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
+function hm(mins){const sign=mins<0?'-':'';const a=Math.abs(Math.round(mins));return `${sign}${Math.floor(a/60)}h${pad(a%60)}m`;}
+function save(){localStorage.setItem('kintai_company',JSON.stringify(records));}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function getToday(){return records.find(r=>r.date===todayKey())||null;}
+
+// GPS距離計算（メートル）
+function calcDistance(lat1,lng1,lat2,lng2){
+  const R=6371000;
+  const dLat=(lat2-lat1)*Math.PI/180;
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+
+    Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*
+    Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// GPS確認
+function checkGPS(){
+  if(!navigator.geolocation){
+    setGPSStatus('error','GPS非対応のブラウザです','');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const dist=Math.round(calcDistance(pos.coords.latitude,pos.coords.longitude,COMPANY_LAT,COMPANY_LNG));
+      if(dist<=ALLOWED_RADIUS){
+        setGPSStatus('inside','会社内',`距離：約${dist}m`);
+      } else {
+        setGPSStatus('outside','会社外',`距離：約${dist}m（100m以上）`);
+      }
+    },
+    err=>{
+      setGPSStatus('error','位置情報を取得できません','設定でGPSを許可してください');
+    },
+    {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+  );
+}
+
+function setGPSStatus(status, text, sub){
+  gpsStatus=status;
+  const dot=document.getElementById('gpsDot');
+  dot.className='gps-dot '+status;
+  document.getElementById('gpsText').textContent=text;
+  document.getElementById('gpsSub').textContent=sub;
+  updateButtons();
+}
+
+function updateButtons(){
+  const t=getToday();
+  const hasName=!!userName;
+  const isInside=gpsStatus==='inside';
+  const isOutside=gpsStatus==='outside';
+  const btnIn=document.getElementById('btnIn');
+  const btnOut=document.getElementById('btnOut');
+  const btnTW=document.getElementById('btnTelework');
+
+  // 範囲外ボタンの表示切り替え
+  document.getElementById('outsideBtns').style.display=isOutside?'block':'none';
+
+  if(!t){
+    // 未打刻
+    btnIn.disabled=!(hasName&&isInside);
+    btnOut.disabled=true;
+    btnTW.disabled=!(hasName&&isOutside);
+    document.getElementById('btnBiz').disabled=!(hasName&&isOutside);
+  } else if(t.in&&!t.out){
+    // 勤務中
+    btnIn.disabled=true;
+    btnOut.disabled=!hasName;
+    btnTW.disabled=true;
+    document.getElementById('btnBiz').disabled=true;
+  } else {
+    // 退勤済
+    btnIn.disabled=true;
+    btnOut.disabled=true;
+    btnTW.disabled=true;
+    document.getElementById('btnBiz').disabled=true;
+  }
+}
+
+// 名前モーダル
+function openNameModal(){
+  document.getElementById('nameInput').value=userName||'';
+  document.getElementById('nameOverlay').classList.add('open');
+  checkNameInput();
+}
+function checkNameInput(){
+  const v=document.getElementById('nameInput').value.trim();
+  document.getElementById('btnNameOk').disabled=!v;
+}
+function saveName(){
+  const v=document.getElementById('nameInput').value.trim();
+  if(!v)return;
+  userName=v;
+  localStorage.setItem('kintai_name',v);
+  document.getElementById('nameDisplay').textContent=v;
+  document.getElementById('nameOverlay').classList.remove('open');
+  updateButtons();
+  showToast(`氏名を「${v}」に設定しました`);
+}
+document.getElementById('nameInput').addEventListener('input',checkNameInput);
+document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveName();});
+
+// 打刻をスプレッドシートに送信
+async function sendToSheet(data){
+  if(SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return; // 未設定時はスキップ
+  try{
+    await fetch(SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+  }catch(e){
+    console.log('送信エラー',e);
+  }
+}
+
+function clockIn(){
+  if(!userName){showToast('先に氏名を設定してください');return;}
+  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const now=nowTimeStr();
+  records.unshift({date:todayKey(),in:now,out:'',type:'出社'});
+  save();
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社'});
+  render();showToast('出勤打刻しました ✓');
+}
+function clockOut(){
+  const t=getToday();
+  if(!t||t.out){showToast('先に出勤打刻してください');return;}
+  const now=nowTimeStr();
+  t.out=now;save();
+  sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:t.type});
+  render();
+  const c=calcDay(t);
+  showToast(`退勤打刻しました${c?' 実労働時間'+hm(c.totalMins):''} ✓`);
+}
+function clockBiz(){
+  if(!userName){showToast('先に氏名を設定してください');return;}
+  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const now=nowTimeStr();
+  records.unshift({date:todayKey(),in:now,out:'',type:'出張等'});
+  save();
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等'});
+  render();showToast('🚗 出張等で出勤しました ✓');
+}
+function clockTelework(){
+  if(!userName){showToast('先に氏名を設定してください');return;}
+  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const now=nowTimeStr();
+  records.unshift({date:todayKey(),in:now,out:'',type:'テレワーク'});
+  save();
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク'});
+  render();showToast('🏠 テレワーク出勤しました ✓');
+}
+
+// 勤務時間計算
+function calcDay(r){
+  if(!r.in||!r.out)return null;
+  const inM=toMins(r.in),outM=toMins(r.out);
+  if(outM<=inM)return null;
+  const allBefore=outM<=WORK_START, allAfter=inM>=WORK_END;
+  if(allBefore||allAfter) return{totalMins:outM-inM,otMins:0,earlyOT:0,lateOT:0};
+  const breaks=[{s:10*60,e:10*60+10},{s:12*60,e:12*60+45},{s:15*60,e:15*60+10}];
+  let bMins=0;
+  breaks.forEach(b=>{const os=Math.max(inM,b.s),oe=Math.min(outM,b.e);if(oe>os)bMins+=oe-os;});
+  const totalMins=Math.max(0,outM-inM-bMins);
+  const earlyOT=inM<WORK_START?WORK_START-inM:0;
+  const lateOT=outM>WORK_END?outM-WORK_END:0;
+  return{totalMins,otMins:earlyOT+lateOT,earlyOT,lateOT};
+}
+
+function getCurrentPeriod(){
+  const now=new Date(),d=now.getDate(),y=now.getFullYear(),m=now.getMonth();
+  let sY,sM,eY,eM;
+  if(d<=20){sM=m-1;sY=y;if(sM<0){sM=11;sY=y-1;}eM=m;eY=y;}
+  else{sM=m;sY=y;eM=m+1;eY=y;if(eM>11){eM=0;eY=y+1;}}
+  return{start:`${sY}-${pad(sM+1)}-21`,end:`${eY}-${pad(eM+1)}-20`};
+}
+function inPeriod(d,p){return d>=p.start&&d<=p.end;}
+
+function updateOTBanner(){
+  const p=getCurrentPeriod();
+  const pr=records.filter(r=>inPeriod(r.date,p));
+  let tot=0;pr.forEach(r=>{const c=calcDay(r);if(c)tot+=c.otMins;});
+  const t=getToday();
+  if(t&&t.in&&!t.out){
+    const n=new Date(),inM=toMins(t.in),nowM=n.getHours()*60+n.getMinutes();
+    tot+=(inM<WORK_START?WORK_START-inM:0)+(nowM>WORK_END?nowM-WORK_END:0);
+  }
+  const isOver=tot>0;
+  document.getElementById('otBanner').className='ot-banner '+(isOver?'over':'none');
+  document.getElementById('otLabel').className='ot-left'+(isOver?' over':'');
+  document.getElementById('otSub').className='ot-sub'+(isOver?' over':'');
+  document.getElementById('otValue').className='ot-right'+(isOver?' over':'');
+  document.getElementById('otValue').textContent=hm(tot);
+  document.getElementById('otSub').textContent=`${p.start.slice(5).replace('-','/')} 〜 ${p.end.slice(5).replace('-','/')}`;
+}
+
+function updateClock(){
+  const n=new Date();
+  document.getElementById('clockTime').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+  document.getElementById('clockDate').textContent=n.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  const t=getToday();
+  if(t&&t.in&&!t.out){
+    const inM=toMins(t.in),nowM=n.getHours()*60+n.getMinutes();
+    document.getElementById('todayH').textContent=hm(Math.max(0,nowM-inM-BREAK_MINS));
+    const ot=(inM<WORK_START?WORK_START-inM:0)+(nowM>WORK_END?nowM-WORK_END:0);
+    const el=document.getElementById('todayOT');el.textContent=hm(ot);el.className='stat-val'+(ot>0?' ot':'');
+    updateOTBanner();
+  }
+}
+
+function render(){
+  const t=getToday(),p=getCurrentPeriod();
+  if(!t){
+    document.getElementById('statusText').textContent='未打刻';
+    document.getElementById('todayH').textContent='--';
+    document.getElementById('todayOT').textContent='--';
+    document.getElementById('todayOT').className='stat-val';
+  } else if(t.in&&!t.out){
+    const typeLabel=t.type==='テレワーク'?'🏠 テレワーク勤務中':t.type==='出張等'?'🚗 出張等勤務中':'勤務中';
+    document.getElementById('statusText').textContent=`${typeLabel}（出勤 ${t.in}）`;
+  } else {
+    const c=calcDay(t);
+    const typeLabel=t.type==='テレワーク'?'🏠 テレワーク退勤済':t.type==='出張等'?'🚗 出張等退勤済':'退勤済';
+    document.getElementById('statusText').textContent=`${typeLabel}（${t.in} → ${t.out}）`;
+    if(c){
+      document.getElementById('todayH').textContent=hm(c.totalMins);
+      const el=document.getElementById('todayOT');el.textContent=hm(c.otMins);el.className='stat-val'+(c.otMins>0?' ot':'');
+    }
+  }
+  const pr=records.filter(r=>inPeriod(r.date,p));
+  let tw=0,tot=0;pr.forEach(r=>{const c=calcDay(r);if(c){tw+=c.totalMins;tot+=c.otMins;}});
+  document.getElementById('periodDays').textContent=pr.length+'日';
+  document.getElementById('monthH').textContent=hm(tw);
+  updateOTBanner();
+  updateButtons();
+  document.getElementById('nameDisplay').textContent=userName||'未設定';
+}
+
+// 初期化
+if(!userName) openNameModal();
+render();
+checkGPS();
+// 5分ごとにGPS更新
+setInterval(checkGPS, 5*60*1000);
+clearInterval(timerInt);
+timerInt=setInterval(updateClock,1000);
+updateClock();
+</script>
+</body>
+</html>
