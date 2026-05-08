@@ -350,6 +350,8 @@ function closeEditToday(e){
 function saveEditToday(){
   const t=getToday();
   if(!t) return;
+  const originalIn=t.in||'';
+  const originalOut=t.out||'';
   const inT=document.getElementById('editTodayIn').value;
   const outT=document.getElementById('editTodayOut').value;
   if(!inT){showToast('出勤時刻は必須です');return;}
@@ -358,8 +360,12 @@ function saveEditToday(){
   t.out=outT;
   save();
   // スプレッドシートにも修正を送信
-  if(inT) sendToSheet({name:userName,date:t.date,type:'出勤',time:inT,workType:t.type});
-  if(outT) sendToSheet({name:userName,date:t.date,type:'退勤',time:outT,workType:t.type});
+  // 出勤時刻が変わった場合のみ出勤を送信
+  if(inT && inT !== originalIn) sendToSheet({name:userName,date:t.date,type:'出勤',time:inT,workType:t.type});
+  // 退勤時刻が変わった場合のみ退勤を送信
+  if(outT && outT !== originalOut) sendToSheet({name:userName,date:t.date,type:'退勤',time:outT,workType:t.type});
+  // 両方変わっていない場合でも出勤は送信（初回修正対応）
+  if(inT && inT === originalIn && (!outT || outT === originalOut)) sendToSheet({name:userName,date:t.date,type:'出勤',time:inT,workType:t.type});
   render();
   document.getElementById('editTodayOverlay').classList.remove('open');
   showToast('打刻を修正しました ✓');
