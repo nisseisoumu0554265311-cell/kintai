@@ -37,8 +37,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .btn-biz{background:#5856D6;color:#fff;width:100%;margin-bottom:.9rem;font-size:16px;padding:.9rem 0;border-radius:14px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s,transform .1s;-webkit-appearance:none;}
 .btn-biz:disabled{opacity:.3;cursor:not-allowed;}
 .btn-biz:not(:disabled):active{transform:scale(.97);}
-.btn-edit-today{width:100%;padding:.65rem 0;border-radius:14px;font-size:14px;font-weight:500;cursor:pointer;border:0.5px solid #C7C7CC;background:#fff;color:#007AFF;margin-bottom:.9rem;}
-.btn-edit-today:active{opacity:.7;}
+
 .btn-in:disabled,.btn-out:disabled,.btn-telework:disabled{opacity:.3;cursor:not-allowed;}
 .btn-in:not(:disabled):active,.btn-out:not(:disabled):active,.btn-telework:not(:disabled):active{transform:scale(.97);}
 .ot-banner{border-radius:14px;padding:.85rem 1.1rem;margin-bottom:.9rem;display:flex;align-items:center;justify-content:space-between;}
@@ -100,11 +99,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 
   <!-- 今日の打刻を修正 -->
-  <button class="btn-edit-today" id="btnEditToday" onclick="openEditToday()" style="display:none;">
-    ✏️ 今日の打刻を修正
-  </button>
-
-  <!-- 出勤・退勤ボタン -->
+<!-- 出勤・退勤ボタン -->
   <div class="btn-row">
     <button class="btn-in" id="btnIn" onclick="clockIn()" disabled>出勤</button>
     <button class="btn-out" id="btnOut" onclick="clockOut()" disabled>退勤</button>
@@ -143,25 +138,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 </div>
 
-<!-- 今日の打刻修正モーダル -->
-<div class="overlay" id="editTodayOverlay" onclick="closeEditToday(event)">
-  <div class="modal" onclick="event.stopPropagation()">
-    <div class="modal-title">今日の打刻を修正</div>
-    <div class="modal-sub" id="editTodayDate"></div>
-    <div style="background:#F2F2F7;border-radius:12px;overflow:hidden;margin-bottom:1rem;">
-      <div style="padding:.75rem 1rem;display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid #E5E5EA;">
-        <label style="font-size:15px;color:#1C1C1E;">出勤時刻</label>
-        <input type="time" id="editTodayIn" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
-      </div>
-      <div style="padding:.75rem 1rem;display:flex;justify-content:space-between;align-items:center;">
-        <label style="font-size:15px;color:#1C1C1E;">退勤時刻</label>
-        <input type="time" id="editTodayOut" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
-      </div>
-    </div>
-    <button class="btn-modal-ok" onclick="saveEditToday()">保存</button>
-    <button onclick="closeEditToday()" style="width:100%;padding:.65rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;margin-top:8px;">キャンセル</button>
-  </div>
-</div>
+
 
 <!-- 名前入力モーダル -->
 <div class="overlay" id="nameOverlay">
@@ -335,41 +312,6 @@ function clockOut(){
   const c=calcDay(t);
   showToast(`退勤打刻しました${c?' 実労働時間'+hm(c.totalMins):''} ✓`);
 }
-function openEditToday(){
-  const t=getToday();
-  if(!t) return;
-  document.getElementById('editTodayDate').textContent=t.date;
-  document.getElementById('editTodayIn').value=t.in||'';
-  document.getElementById('editTodayOut').value=t.out||'';
-  document.getElementById('editTodayOverlay').classList.add('open');
-}
-function closeEditToday(e){
-  if(e&&e.target!==document.getElementById('editTodayOverlay'))return;
-  document.getElementById('editTodayOverlay').classList.remove('open');
-}
-function saveEditToday(){
-  const t=getToday();
-  if(!t) return;
-  const originalIn=t.in||'';
-  const originalOut=t.out||'';
-  const inT=document.getElementById('editTodayIn').value;
-  const outT=document.getElementById('editTodayOut').value;
-  if(!inT){showToast('出勤時刻は必須です');return;}
-  if(outT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
-  t.in=inT;
-  t.out=outT;
-  save();
-  // スプレッドシートにも修正を送信
-  // 出勤時刻が変わった場合のみ出勤を送信
-  if(inT && inT !== originalIn) sendToSheet({name:userName,date:t.date,type:'出勤',time:inT,workType:t.type});
-  // 退勤時刻が変わった場合のみ退勤を送信
-  if(outT && outT !== originalOut) sendToSheet({name:userName,date:t.date,type:'退勤',time:outT,workType:t.type});
-  // 両方変わっていない場合でも出勤は送信（初回修正対応）
-  if(inT && inT === originalIn && (!outT || outT === originalOut)) sendToSheet({name:userName,date:t.date,type:'出勤',time:inT,workType:t.type});
-  render();
-  document.getElementById('editTodayOverlay').classList.remove('open');
-  showToast('打刻を修正しました ✓');
-}
 
 function clockBiz(){
   if(!userName){showToast('先に氏名を設定してください');return;}
@@ -474,9 +416,7 @@ function render(){
   updateButtons();
   document.getElementById('nameDisplay').textContent=userName||'未設定';
 
-  // 修正ボタンの表示（打刻済みの場合のみ）
-  const btnET=document.getElementById('btnEditToday');
-  btnET.style.display=t?'block':'none';
+
 }
 
 // 初期化
