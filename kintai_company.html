@@ -136,9 +136,36 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     時間外：8:00より前 ＋ 17:00より後　／　締め：毎月21日〜翌20日<br>
     📍 会社から100m以内で出社打刻、範囲外はテレワーク
   </div>
+
+  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">今期の記録（タップで編集）</div>
+  <div id="historyList"></div>
 </div>
 
-
+<!-- 編集モーダル -->
+<div class="overlay" id="editOverlay" onclick="overlayTap(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="editTitle">記録を編集</div>
+    <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:15px;color:#1C1C1E;">日付</label>
+      <input type="date" id="editDate" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:15px;color:#1C1C1E;">出勤時刻</label>
+      <input type="time" id="editIn" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:15px;color:#1C1C1E;">退勤時刻</label>
+      <input type="time" id="editOut" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:1rem;">
+      <button onclick="closeEdit()" style="padding:.75rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:none;background:#fff;color:#1C1C1E;font-weight:500;">キャンセル</button>
+      <button onclick="saveEdit()" style="padding:.75rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:none;background:#34C759;color:#fff;font-weight:500;">保存</button>
+    </div>
+    <button id="btnCancelOut" onclick="cancelClockOut()" style="display:none;margin-top:8px;width:100%;padding:.75rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:#FFF3CD;color:#856404;font-weight:500;">退勤を取り消す</button>
+    <button id="btnDel" onclick="deleteRecord()" style="display:none;margin-top:8px;width:100%;padding:.75rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:#fff;color:#FF3B30;font-weight:500;">この記録を削除</button>
+  </div>
+</div>
 
 <!-- 名前入力モーダル -->
 <div class="overlay" id="nameOverlay">
@@ -375,6 +402,67 @@ function updateOTBanner(){
   document.getElementById('otSub').textContent=`${p.start.slice(5).replace('-','/')} 〜 ${p.end.slice(5).replace('-','/')}`;
 }
 
+// 編集機能
+let editIdx = null;
+
+function overlayTap(e){if(e.target===document.getElementById('editOverlay'))closeEdit();}
+
+function openEdit(idx){
+  editIdx=idx;
+  const r=records[idx];
+  document.getElementById('editTitle').textContent=r.date+' の記録を編集';
+  document.getElementById('editDate').value=r.date;
+  document.getElementById('editIn').value=r.in||'';
+  document.getElementById('editOut').value=r.out||'';
+  document.getElementById('btnDel').style.display='block';
+  document.getElementById('btnCancelOut').style.display=r.out?'block':'none';
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function closeEdit(){document.getElementById('editOverlay').classList.remove('open');editIdx=null;}
+
+function saveEdit(){
+  const r=records[editIdx];
+  const originalIn=r.in||'';
+  const originalOut=r.out||'';
+  const inT=document.getElementById('editIn').value;
+  const outT=document.getElementById('editOut').value;
+  if(!inT){showToast('出勤時刻は必須です');return;}
+  if(outT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
+  r.in=inT;r.out=outT;
+  save();render();closeEdit();
+  // 変更された項目だけスプレッドシートに送信
+  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.type});
+  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.type});
+  showToast('記録を更新しました ✓');
+}
+
+function cancelClockOut(){
+  if(!confirm('退勤打刻を取り消しますか？'))return;
+  const r=records[editIdx];
+  r.out='';save();render();closeEdit();
+  showToast('退勤打刻を取り消しました');
+}
+
+function deleteRecord(){
+  if(!confirm('この記録を削除しますか？'))return;
+  records.splice(editIdx,1);save();render();closeEdit();showToast('削除しました');
+}
+
+function calcDay(r){
+  if(!r.in||!r.out)return null;
+  const inM=toMins(r.in),outM=toMins(r.out);
+  if(outM<=inM)return null;
+  const breaks=[{s:10*60,e:10*60+10},{s:12*60,e:12*60+45},{s:15*60,e:15*60+10}];
+  let bMins=0;
+  breaks.forEach(b=>{const os=Math.max(inM,b.s),oe=Math.min(outM,b.e);if(oe>os)bMins+=oe-os;});
+  const totalMins=Math.max(0,outM-inM-bMins);
+  const WORK_START=8*60,WORK_END=17*60;
+  const allBefore=outM<=WORK_START,allAfter=inM>=WORK_END;
+  const otMins=allBefore||allAfter?0:totalMins-(7*60+55);
+  return{totalMins,otMins};
+}
+
 function updateClock(){
   const n=new Date();
   document.getElementById('clockTime').textContent=`${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
@@ -416,7 +504,27 @@ function render(){
   updateButtons();
   document.getElementById('nameDisplay').textContent=userName||'未設定';
 
-
+  // 記録一覧（今期・昇順）
+  const list=document.getElementById('historyList');
+  if(list){
+    list.innerHTML='';
+    pr.forEach(r=>{
+      const idx=records.indexOf(r);
+      const c=calcDay(r);
+      const ws=c?hm(c.totalMins):(r.out?'--':'退勤未打刻');
+      const typeIcon=r.type==='テレワーク'?'🏠 ':r.type==='出張等'?'🚗 ':'';
+      const otStr=c&&c.otMins!==0?`<span style="color:${c.otMins>0?'#FF3B30':'#34C759'};font-size:11px;">${hm(c.otMins)}</span>`:'';
+      list.innerHTML+=`<div style="background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;" onclick="openEdit(${idx})">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#8E8E93;">${r.date}</span>
+          <span style="font-size:13px;color:#1C1C1E;"><span style="color:#34C759;">●</span>${r.in||'--'}&nbsp;<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
+        </div>
+        <div style="font-size:11px;color:#8E8E93;margin-top:3px;display:flex;justify-content:space-between;">
+          <span>${typeIcon}実労働 ${ws}</span>${otStr}
+        </div>
+      </div>`;
+    });
+  }
 }
 
 // 初期化
