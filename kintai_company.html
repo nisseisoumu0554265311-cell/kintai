@@ -447,11 +447,11 @@ function updateOTBanner(){
     tot+=(inM<WORK_START?WORK_START-inM:0)+(nowM>WORK_END?nowM-WORK_END:0);
   }
   const isOver=tot>0;
-  document.getElementById('otBanner').className='ot-banner '+(isOver?'over':'none');
-  document.getElementById('otLabel').className='ot-left'+(isOver?' over':'');
-  document.getElementById('otSub').className='ot-sub'+(isOver?' over':'');
-  document.getElementById('otValue').className='ot-right'+(isOver?' over':'');
-  document.getElementById('otValue').textContent=hm(tot);
+  
+  
+  
+  
+  
   document.getElementById('otSub').textContent=`${p.start.slice(5).replace('-','/')} 〜 ${p.end.slice(5).replace('-','/')}`;
 }
 
@@ -603,9 +603,7 @@ function render(){
   const t=getToday(),p=getCurrentPeriod();
   if(!t){
     document.getElementById('statusText').textContent='未打刻';
-    document.getElementById('todayH').textContent='--';
-    document.getElementById('todayOT').textContent='--';
-    document.getElementById('todayOT').className='stat-val';
+
   } else if(t.in&&!t.out){
     const typeLabel=t.type==='テレワーク'?'🏠 テレワーク勤務中':t.type==='出張等'?'🚗 出張等勤務中':'勤務中';
     document.getElementById('statusText').textContent=`${typeLabel}（出勤 ${t.in}）`;
