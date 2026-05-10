@@ -127,28 +127,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
   <!-- 時間外バナー -->
   <!-- 有給状況カード -->
-  <div style="background:#fff;border-radius:14px;padding:.85rem 1rem;margin-bottom:.9rem;">
-    <div style="font-size:12px;color:#8E8E93;margin-bottom:.65rem;">有給状況</div>
-    <div style="display:flex;gap:16px;">
-      <div style="font-size:12px;color:#8E8E93;">残日数<div style="font-size:16px;font-weight:500;color:#1C1C1E;" id="leaveRemain">--日</div></div>
-      <div style="font-size:12px;color:#8E8E93;">消化<div style="font-size:16px;font-weight:500;color:#FF3B30;" id="leaveUsed">0日</div></div>
-      <div style="font-size:12px;color:#8E8E93;">時間休<div style="font-size:16px;font-weight:500;color:#FF3B30;" id="leaveHours">0h</div></div>
-    </div>
-  </div>
-<div class="ot-sub" id="otSub">--</div>
-    </div>
-    <div class="ot-right" id="otValue">0h00m</div>
-  </div>
+
 
   <div class="stats">
     <div class="stat"><div class="stat-label">今月の出勤日数</div><div class="stat-val" id="periodDays">0日</div></div>
     <div class="stat"><div class="stat-label">今月の総実労働時間</div><div class="stat-val" id="monthH">0h</div></div>
-    <div class="stat"><div class="stat-label">今月の時間外</div><div class="stat-val" id="monthOT">0h</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.9rem;">
+    <div class="stat">
+      <div class="stat-label">今月の時間外</div>
+      <div class="stat-val" id="monthOT">0h</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">有給</div>
+      <div style="font-size:12px;color:#8E8E93;margin-top:4px;">
+        残：<span id="leaveRemain" style="color:#1C1C1E;font-weight:500;">--日</span><br>
+        消化：<span id="leaveUsed" style="color:#FF3B30;font-weight:500;">0日</span>　
+        時間休：<span id="leaveHours" style="color:#FF3B30;font-weight:500;">0h</span>
+      </div>
+    </div>
   </div>
 
-  <div class="info-box">
+  <div class="info-box" id="infoBox">
     休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
-    時間外：8:00より前 ＋ 17:00より後　／　締め：毎月21日〜翌20日<br>
+    <span id="infoOT"></span>　／　締め：毎月21日〜翌20日<br>
     📍 会社から100m以内で出社打刻、範囲外はテレワーク
   </div>
 
@@ -330,11 +332,18 @@ function updateButtons(){
     btnTW.disabled=!(hasName&&isOutside);
     document.getElementById('btnBiz').disabled=!(hasName&&isOutside);
   } else if(t.in&&!t.out){
-    // 勤務中
+    // 勤務中：退勤はGPS関係なく可能、出張等退勤はGPS範囲外のみ
     btnIn.disabled=true;
-    btnOut.disabled=!hasName;
-    btnTW.disabled=true;
-    document.getElementById('btnBiz').disabled=true;
+    btnOut.disabled=!hasName; // GPSに関係なく退勤可能
+    // 出社で出勤→出張等で退勤（範囲外のみ表示）
+    const canBizOut = isOutside && t.inType==='出社';
+    document.getElementById('outsideBtns').style.display=isOutside?'block':'none';
+    btnTW.disabled=true; // 勤務中はテレワーク不可
+    document.getElementById('btnBiz').disabled=!canBizOut;
+    // 出張等で出勤→出社で退勤（範囲内の場合、退勤ボタンで対応）
+    if(t.inType==='出張等'&&isInside){
+      btnOut.disabled=false;
+    }
   } else {
     // 退勤済
     btnIn.disabled=true;
@@ -390,17 +399,22 @@ function clockIn(){
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
   const now=nowTimeStr();
-  records.unshift({date:todayKey(),in:now,out:'',type:'出社'});
+  records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社'});
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社',empType:workType});
   render();showToast('出勤打刻しました ✓');
 }
 function clockOut(){
   const t=getToday();
   if(!t||t.out){showToast('先に出勤打刻してください');return;}
   const now=nowTimeStr();
-  t.out=now;save();
-  sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:t.type});
+  t.out=now;
+  // GPS状態で退勤時の勤務区分を判定
+  t.outType=gpsStatus==='inside'?'出社':'出張等';
+  const combinedType=t.inType===t.outType?t.inType:'複合('+t.inType+'→'+t.outType+')';
+  save();
+  const c2=calcDay(t);
+  sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType});
   render();
   const c=calcDay(t);
   showToast(`退勤打刻しました${c?' 実労働時間'+hm(c.totalMins):''} ✓`);
@@ -410,18 +424,18 @@ function clockBiz(){
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
   const now=nowTimeStr();
-  records.unshift({date:todayKey(),in:now,out:'',type:'出張等'});
+  records.unshift({date:todayKey(),in:now,out:'',inType:'出張等',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等'});
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等',empType:workType});
   render();showToast('🚗 出張等で出勤しました ✓');
 }
 function clockTelework(){
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
   const now=nowTimeStr();
-  records.unshift({date:todayKey(),in:now,out:'',type:'テレワーク'});
+  records.unshift({date:todayKey(),in:now,out:'',inType:'テレワーク',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク'});
+  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク',empType:workType});
   render();showToast('🏠 テレワーク出勤しました ✓');
 }
 
@@ -584,7 +598,8 @@ function updateClock(){
       const elapsed=Math.max(0,nowM-inM-bMins);
       const ot=elapsed-(7*60+55);
       // ステータスにリアルタイム表示
-      const typeLabel=t.type==='テレワーク'?'🏠 テレワーク勤務中':t.type==='出張等'?'🚗 出張等勤務中':'勤務中';
+      const typeIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
+    const typeLabel=(typeIcon[t.inType]||'')+(t.inType||'')+'勤務中';
       document.getElementById('statusText').textContent=`${typeLabel}（出勤 ${t.in}）　実労働：${hm(elapsed)}　時間外：${hm(ot)}`;
     } else {
       const effectiveIn=Math.max(inM,8*60);
@@ -592,7 +607,8 @@ function updateClock(){
       const OT_START=17*60+10;
       let ot=0;
       if(nowM>OT_START) ot=Math.floor((nowM-OT_START)/30)*30;
-      const typeLabel=t.type==='テレワーク'?'🏠 テレワーク勤務中':t.type==='出張等'?'🚗 出張等勤務中':'勤務中';
+      const typeIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
+    const typeLabel=(typeIcon[t.inType]||'')+(t.inType||'')+'勤務中';
       document.getElementById('statusText').textContent=`${typeLabel}（出勤 ${t.in}）　実労働：${hm(elapsed)}　残業：${hm(ot)}`;
     }
     updateOTBanner();
@@ -605,11 +621,14 @@ function render(){
     document.getElementById('statusText').textContent='未打刻';
 
   } else if(t.in&&!t.out){
-    const typeLabel=t.type==='テレワーク'?'🏠 テレワーク勤務中':t.type==='出張等'?'🚗 出張等勤務中':'勤務中';
+    const typeIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
+    const typeLabel=(typeIcon[t.inType]||'')+(t.inType||'')+'勤務中';
     document.getElementById('statusText').textContent=`${typeLabel}（出勤 ${t.in}）`;
   } else {
     const c=calcDay(t);
-    const typeLabel=t.type==='テレワーク'?'🏠 テレワーク退勤済':t.type==='出張等'?'🚗 出張等退勤済':'退勤済';
+    const inIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
+    const outIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
+    const typeLabel=t.inType===t.outType?(inIcon[t.inType]||'')+(t.inType||'')+'退勤済':(inIcon[t.inType]||'')+(t.inType||'')+'→'+(outIcon[t.outType]||'')+(t.outType||'')+'退勤済';
     const otStr=c?`　時間外：${hm(c.otMins)}`:'';
     document.getElementById('statusText').textContent=`${typeLabel}（${t.in}→${t.out}）${c?'　実労働：'+hm(c.totalMins):''}${otStr}`;
   }
@@ -624,6 +643,8 @@ function render(){
   document.getElementById('nameDisplay').textContent=userName||'未設定';
   const wtBtn=document.getElementById('btnWorkType');
   if(wtBtn) wtBtn.textContent=workType==='flex'?'🔄 フレックス':'🕐 一般';
+  const infoOT=document.getElementById('infoOT');
+  if(infoOT) infoOT.textContent=workType==='flex'?'時間外：実労働時間 - 7h55m':'定時：8:00〜17:00　残業：17:10以降30分単位切り捨て';
 
   // 有給状況表示
   const ls=calcLeaveStats(pr);
