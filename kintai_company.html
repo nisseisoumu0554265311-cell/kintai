@@ -210,11 +210,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
     <div class="modal-title">有給残日数の設定</div>
-    <div style="background:#F2F2F7;border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+    <div style="background:#F2F2F7;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">有給残日数</label>
       <input type="number" id="leaveInput" min="0" max="40" step="0.5" style="border:none;background:none;font-size:18px;color:#007AFF;text-align:right;outline:none;width:80px;">
     </div>
-    <div style="font-size:12px;color:#8E8E93;margin-bottom:1rem;">年次付与時や残日数変更時に更新してください</div>
+    <div style="background:#F2F2F7;border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:15px;color:#1C1C1E;">時間休残（時間）</label>
+      <input type="number" id="leaveHourInput" min="0" max="40" step="1" style="border:none;background:none;font-size:18px;color:#007AFF;text-align:right;outline:none;width:80px;">
+    </div>
+    <div style="font-size:12px;color:#8E8E93;margin-bottom:1rem;">年次付与時や残数変更時に更新してください</div>
     <button onclick="saveLeaveModal()" style="width:100%;padding:.75rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:none;background:#34C759;color:#fff;font-weight:500;">保存</button>
     <button onclick="closeLeaveModal()" style="width:100%;padding:.65rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;margin-top:8px;">キャンセル</button>
   </div>
@@ -483,7 +487,11 @@ function calcLeaveStats(pr){
 
 // 有給定数
 let leaveBalance = parseFloat(localStorage.getItem('kintai_leave_balance')||'-1');
-function saveLeave(){localStorage.setItem('kintai_leave_balance',leaveBalance);}
+let leaveHourBalance = parseFloat(localStorage.getItem('kintai_leave_hour_balance')||'-1');
+function saveLeave(){
+  localStorage.setItem('kintai_leave_balance',leaveBalance);
+  localStorage.setItem('kintai_leave_hour_balance',leaveHourBalance);
+}
 let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or general
 const WORK_TYPE_PASSWORD = '2022';
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
@@ -650,7 +658,8 @@ function render(){
   document.getElementById('leaveHours').textContent=ls.hours+'h';
   if(leaveBalance>=0){
     const remain=leaveBalance-ls.days;
-    document.getElementById('leaveRemain').textContent=remain.toFixed(1).replace('.0','')+'日';
+    const remainH=leaveHourBalance>=0?leaveHourBalance-ls.hours:0;
+    document.getElementById('leaveRemain').textContent=remain.toFixed(1).replace('.0','')+'日'+(leaveHourBalance>=0?' / '+remainH+'h':'');
   } else {
     document.getElementById('leaveRemain').textContent='未設定';
   }
@@ -712,6 +721,7 @@ function setWorkType(type){
 
 function openLeaveModal(){
   document.getElementById('leaveInput').value=leaveBalance>=0?leaveBalance:'';
+  document.getElementById('leaveHourInput').value=leaveHourBalance>=0?leaveHourBalance:'';
   document.getElementById('leaveModal').classList.add('open');
 }
 function closeLeaveModal(e){
@@ -720,12 +730,14 @@ function closeLeaveModal(e){
 }
 function saveLeaveModal(){
   const v=parseFloat(document.getElementById('leaveInput').value);
+  const vh=parseFloat(document.getElementById('leaveHourInput').value);
   if(isNaN(v)||v<0){showToast('正しい日数を入力してください');return;}
   leaveBalance=v;
+  leaveHourBalance=isNaN(vh)?0:vh;
   saveLeave();
   render();
   document.getElementById('leaveModal').classList.remove('open');
-  showToast(`有給残を${v}日に設定しました ✓`);
+  showToast(`有給残${v}日・時間休残${leaveHourBalance}hに設定しました ✓`);
 }
 
 // 初期化
