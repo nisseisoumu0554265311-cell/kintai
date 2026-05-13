@@ -682,7 +682,7 @@ function render(){
   const list=document.getElementById('historyList');
   if(list){
     list.innerHTML='';
-    [...pr].reverse().forEach(r=>{
+    [...pr].forEach(r=>{
       const idx=records.indexOf(r);
       const c=calcDay(r);
       const ws=c?hm(c.totalMins):(r.out?'--':'退勤未打刻');
