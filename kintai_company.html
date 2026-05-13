@@ -575,8 +575,8 @@ function saveEdit(){
   r.in=inT;r.out=outT;r.leave=leave;
   save();render();closeEdit();
   // 変更された項目だけスプレッドシートに送信
-  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.type,leave:leave});
-  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.type,leave:leave});
+  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.inType||'出社',empType:workType,leave:leave});
+  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.inType||'出社',empType:workType,leave:leave});
   showToast('記録を更新しました ✓');
 }
 
