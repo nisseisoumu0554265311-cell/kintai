@@ -817,7 +817,7 @@ updateClock();
 // お知らせ取得・表示
 let noticeData = [];
 function closeNotice(){
-  document.getElementById('noticeOverlay').classList.remove('active');
+  document.getElementById('noticeOverlay').classList.remove('open');
 }
 function openNotice(){
   if(!noticeData.length) return;
@@ -828,7 +828,7 @@ function openNotice(){
       <div style="font-size:15px;color:#1C1C1E;line-height:1.5;">${n.message}</div>
     </div>
   `).join('');
-  document.getElementById('noticeOverlay').classList.add('active');
+  document.getElementById('noticeOverlay').classList.add('open');
 }
 function loadNotices(){
   fetch(SHEET_URL+'?type=notices')
