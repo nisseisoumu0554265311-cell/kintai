@@ -80,6 +80,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <div class="clock-time" id="clockTime">--:--:--</div>
   <div class="clock-date" id="clockDate"></div>
 
+  <!-- お知らせバナー -->
+  <div id="noticeBanner" onclick="openNotice()" style="display:none;background:#FFF3CD;border-radius:12px;padding:10px 14px;margin-bottom:.9rem;cursor:pointer;align-items:center;gap:8px;">
+    <span style="font-size:16px;">📢</span>
+    <span id="noticeBannerText" style="flex:1;font-size:14px;color:#856404;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+    <span style="color:#856404;font-size:14px;">＞</span>
+  </div>
+
   <!-- 名前表示（タップで設定メニュー） -->
   <div class="name-card" oncontextmenu="toggleSettingMenu();return false;" ontouchstart="startLongPress(event)" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" onmousedown="startLongPress(event)" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" style="cursor:pointer;-webkit-user-select:none;user-select:none;">
     <div style="flex:1;">
@@ -161,6 +168,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">今月の記録（タップで編集）</div>
   <div id="historyList"></div>
   <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.0.0　2026-05-11</div>
+</div>
+
+<!-- お知らせモーダル -->
+<div class="overlay" id="noticeOverlay" onclick="closeNotice()">
+  <div class="modal" onclick="event.stopPropagation()" style="max-height:80vh;overflow-y:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📢 お知らせ</div>
+    <div id="noticeList" style="margin-top:8px;"></div>
+    <button onclick="closeNotice()" style="width:100%;margin-top:16px;padding:14px;background:#007AFF;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;">閉じる</button>
+  </div>
 </div>
 
 <!-- 編集モーダル -->
@@ -796,6 +813,38 @@ setInterval(checkGPS, 5*60*1000);
 clearInterval(timerInt);
 timerInt=setInterval(updateClock,1000);
 updateClock();
+
+// お知らせ取得・表示
+let noticeData = [];
+function closeNotice(){
+  document.getElementById('noticeOverlay').classList.remove('active');
+}
+function openNotice(){
+  if(!noticeData.length) return;
+  const list=document.getElementById('noticeList');
+  list.innerHTML=noticeData.map(n=>`
+    <div style="background:#F2F2F7;border-radius:12px;padding:12px 14px;margin-bottom:8px;">
+      <div style="font-size:11px;color:#8E8E93;margin-bottom:4px;">${n.date}</div>
+      <div style="font-size:15px;color:#1C1C1E;line-height:1.5;">${n.message}</div>
+    </div>
+  `).join('');
+  document.getElementById('noticeOverlay').classList.add('active');
+}
+function loadNotices(){
+  fetch(SHEET_URL+'?type=notices')
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.notices && data.notices.length>0){
+        noticeData = data.notices;
+        // バナーに最新1件を表示
+        const banner=document.getElementById('noticeBanner');
+        document.getElementById('noticeBannerText').textContent=data.notices[0].message;
+        banner.style.display='flex';
+      }
+    })
+    .catch(()=>{});
+}
+setTimeout(loadNotices, 1000);
 </script>
 </body>
 </html>
