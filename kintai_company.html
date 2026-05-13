@@ -270,6 +270,7 @@ let records = JSON.parse(localStorage.getItem('kintai_company')||'[]');
 let userName = localStorage.getItem('kintai_name')||'';
 let gpsStatus = 'checking'; // checking / inside / outside / error
 let timerInt;
+let isSending = false; // 二重送信防止
 
 function pad(n){return String(n).padStart(2,'0');}
 function todayKey(){const n=new Date();return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;}
@@ -405,8 +406,10 @@ async function sendToSheet(data){
 }
 
 function clockIn(){
+  if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  isSending=true;setTimeout(()=>isSending=false,3000);
   const now=nowTimeStr();
   records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
   save();
@@ -414,8 +417,10 @@ function clockIn(){
   render();showToast('出勤打刻しました ✓');
 }
 function clockOut(){
+  if(isSending){showToast('送信中です…');return;}
   const t=getToday();
   if(!t||t.out){showToast('先に出勤打刻してください');return;}
+  isSending=true;setTimeout(()=>isSending=false,3000);
   const now=nowTimeStr();
   t.out=now;
   // GPS状態で退勤時の勤務区分を判定
@@ -430,8 +435,10 @@ function clockOut(){
 }
 
 function clockBiz(){
+  if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  isSending=true;setTimeout(()=>isSending=false,3000);
   const now=nowTimeStr();
   records.unshift({date:todayKey(),in:now,out:'',inType:'出張等',outType:''});
   save();
@@ -439,8 +446,10 @@ function clockBiz(){
   render();showToast('🚗 出張等で出勤しました ✓');
 }
 function clockTelework(){
+  if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  isSending=true;setTimeout(()=>isSending=false,3000);
   const now=nowTimeStr();
   records.unshift({date:todayKey(),in:now,out:'',inType:'テレワーク',outType:''});
   save();
