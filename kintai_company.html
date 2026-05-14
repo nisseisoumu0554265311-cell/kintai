@@ -898,6 +898,25 @@ function loadNotices(){
 }
 setTimeout(loadNotices, 1000);
 
+// スプレッドシートから有給残を取得（未設定の場合のみ）
+function loadLeaveBalance(){
+  if(!userName) return;
+  if(leaveBalance >= 0) return; // 既に設定済みの場合はスキップ
+  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName))
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.status==='ok' && data.leave){
+        leaveBalance = data.leave.days;
+        leaveHourBalance = data.leave.hours;
+        saveLeave();
+        render();
+        showToast('有給残を取得しました');
+      }
+    })
+    .catch(()=>{});
+}
+setTimeout(loadLeaveBalance, 2000);
+
 function refreshNotice(){
   const wrapper = document.getElementById('noticeWrapper');
   const loading = document.getElementById('noticeLoading');
