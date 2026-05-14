@@ -726,8 +726,14 @@ function render(){
   document.getElementById('leaveUsed').textContent=ls.days+'日';
   document.getElementById('leaveHours').textContent=ls.hours+'h';
   if(leaveBalance>=0){
-    const remain=leaveBalance-ls.days;
-    const remainH=leaveHourBalance>=0?leaveHourBalance-ls.hours:0;
+    let remain=leaveBalance-ls.days;
+    let remainH=leaveHourBalance>=0?leaveHourBalance-ls.hours:0;
+    // 時間がマイナスの場合、1日から繰り下げ（1日=8hとして計算）
+    if(remainH < 0){
+      const borrow = Math.ceil(Math.abs(remainH) / 8);
+      remain -= borrow;
+      remainH += borrow * 8;
+    }
     document.getElementById('leaveRemain').textContent=remain.toFixed(1).replace('.0','')+'日'+(leaveHourBalance>=0?' / '+remainH+'h':'');
   } else {
     document.getElementById('leaveRemain').textContent='未設定';
