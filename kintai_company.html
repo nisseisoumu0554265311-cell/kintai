@@ -106,6 +106,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
       <button class="btn-change" onclick="openLeaveModal();event.stopPropagation()" style="color:#FF9500;">有給設定</button>
       <button class="btn-change" onclick="openWorkTypeModal();event.stopPropagation()" style="color:#5856D6;">勤務設定</button>
     </div>
+    <div style="margin-top:8px;border-top:1px solid #F2F2F7;padding-top:8px;">
+      <button class="btn-change" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;width:100%;">📅 月次締め処理</button>
+    </div>
   </div>
 
   <!-- GPS状態 -->
@@ -269,6 +272,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
       <button onclick="setWorkType('flex')" id="btnFlex" style="width:100%;padding:.85rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:2px solid #5856D6;background:none;color:#5856D6;font-weight:500;margin-bottom:8px;">🔄 フレックス</button>
       <button onclick="setWorkType('general')" id="btnGeneral" style="width:100%;padding:.85rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:2px solid #E5E5EA;background:none;color:#1C1C1E;font-weight:500;margin-bottom:1rem;">🕐 一般（8:00〜17:00）</button>
       <button onclick="closeWorkTypeModal()" style="width:100%;padding:.65rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- 月次締め処理モーダル -->
+<div class="overlay" id="monthlyCloseModal" onclick="closeMonthlyCloseModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📅 月次締め処理</div>
+    <div id="monthlyCloseStep1">
+      <div style="font-size:13px;color:#8E8E93;margin-bottom:1rem;text-align:center;">管理者パスワードを入力してください</div>
+      <div style="background:#F2F2F7;border-radius:12px;padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;">
+        <label style="font-size:15px;color:#1C1C1E;">パスワード</label>
+        <input type="password" id="monthlyClosePw" maxlength="4" style="border:none;background:none;font-size:18px;color:#FF3B30;text-align:right;outline:none;width:80px;" placeholder="****">
+      </div>
+      <button onclick="checkMonthlyClosePw()" style="width:100%;padding:.75rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:none;background:#FF3B30;color:#fff;font-weight:500;">確認</button>
+      <button onclick="closeMonthlyCloseModal()" style="width:100%;padding:.65rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;margin-top:8px;">キャンセル</button>
+    </div>
+    <div id="monthlyCloseStep2" style="display:none;">
+      <div style="background:#FFF3CD;border-radius:12px;padding:12px 14px;margin-bottom:1rem;font-size:14px;color:#856404;line-height:1.6;">
+        ⚠️ 現在のデータをコピー保存し、個人シートのデータを削除します。この操作は取り消せません。
+      </div>
+      <button onclick="execMonthlyClose()" style="width:100%;padding:.75rem 0;border-radius:12px;font-size:16px;cursor:pointer;border:none;background:#FF3B30;color:#fff;font-weight:500;margin-bottom:8px;">締め処理を実行する</button>
+      <button onclick="closeMonthlyCloseModal()" style="width:100%;padding:.65rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;">キャンセル</button>
+    </div>
+    <div id="monthlyCloseStep3" style="display:none;text-align:center;">
+      <div style="font-size:40px;margin-bottom:12px;">⏳</div>
+      <div style="font-size:15px;color:#8E8E93;">処理中です。しばらくお待ちください…</div>
     </div>
   </div>
 </div>
@@ -857,6 +888,45 @@ function loadNotices(){
     });
 }
 setTimeout(loadNotices, 1000);
+
+// 月次締め処理
+const MONTHLY_CLOSE_PASSWORD = '5311';
+function openMonthlyCloseModal(){
+  document.getElementById('monthlyCloseStep1').style.display='block';
+  document.getElementById('monthlyCloseStep2').style.display='none';
+  document.getElementById('monthlyCloseStep3').style.display='none';
+  document.getElementById('monthlyClosePw').value='';
+  document.getElementById('monthlyCloseModal').classList.add('open');
+}
+function closeMonthlyCloseModal(e){
+  if(e&&e.target!==document.getElementById('monthlyCloseModal'))return;
+  document.getElementById('monthlyCloseModal').classList.remove('open');
+}
+function checkMonthlyClosePw(){
+  if(document.getElementById('monthlyClosePw').value!==MONTHLY_CLOSE_PASSWORD){
+    showToast('パスワードが違います');return;
+  }
+  document.getElementById('monthlyCloseStep1').style.display='none';
+  document.getElementById('monthlyCloseStep2').style.display='block';
+}
+function execMonthlyClose(){
+  document.getElementById('monthlyCloseStep2').style.display='none';
+  document.getElementById('monthlyCloseStep3').style.display='block';
+  fetch(SHEET_URL+'?type=monthlyClose&pw=5311')
+    .then(r=>r.json())
+    .then(data=>{
+      document.getElementById('monthlyCloseModal').classList.remove('open');
+      if(data.status==='ok'){
+        showToast('✅ '+data.message);
+      } else {
+        showToast('❌ エラー：'+data.message);
+      }
+    })
+    .catch(()=>{
+      document.getElementById('monthlyCloseModal').classList.remove('open');
+      showToast('❌ 通信エラーが発生しました');
+    });
+}
 </script>
 </body>
 </html>
