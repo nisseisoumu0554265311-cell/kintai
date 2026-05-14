@@ -81,10 +81,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <div class="clock-date" id="clockDate"></div>
 
   <!-- お知らせバナー -->
-  <div id="noticeBanner" style="display:none;background:#FFF3CD;border-radius:12px;padding:10px 14px;margin-bottom:.9rem;cursor:pointer;gap:8px;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">
-    <span style="font-size:16px;">📢</span>
-    <span id="noticeBannerText" style="flex:1;font-size:14px;color:#856404;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
-    <span style="color:#856404;font-size:14px;">＞</span>
+  <div id="noticeWrapper" style="margin-bottom:.9rem;">
+    <div style="font-size:11px;color:#8E8E93;margin-bottom:4px;padding:0 2px;">お知らせ</div>
+    <div id="noticeLoading" style="background:#F2F2F7;border-radius:12px;padding:10px 14px;font-size:13px;color:#8E8E93;text-align:center;">情報取得中…</div>
+    <div id="noticeBanner" style="display:none;background:#FFF3CD;border-radius:12px;padding:10px 14px;cursor:pointer;gap:8px;-webkit-tap-highlight-color:rgba(0,0,0,0.1);">
+      <span style="font-size:16px;">📢</span>
+      <span id="noticeBannerText" style="flex:1;font-size:14px;color:#856404;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+      <span style="color:#856404;font-size:14px;">＞</span>
+    </div>
   </div>
 
   <!-- 名前表示（タップで設定メニュー） -->
@@ -127,11 +131,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 
   <!-- 範囲外ボタン（テレワーク・出張等） -->
-  <div id="outsideBtns" style="display:none;">
-    <button class="btn-telework" id="btnTelework" onclick="clockTelework()" disabled>
-      🏠 テレワーク出勤
+  <div id="outsideBtns" style="display:none;flex-direction:row;gap:.5rem;">
+    <button class="btn-telework" id="btnTelework" onclick="clockTelework()" disabled style="width:calc(50% - .25rem);margin-bottom:.9rem;font-size:14px;padding:.7rem 0;">
+      🏠 テレワーク
     </button>
-    <button class="btn-biz" id="btnBiz" onclick="clockBiz()" disabled>
+    <button class="btn-biz" id="btnBiz" onclick="clockBiz()" disabled style="width:calc(50% - .25rem);margin-bottom:.9rem;font-size:14px;padding:.7rem 0;">
       🚗 出張等
     </button>
   </div>
@@ -350,7 +354,7 @@ function updateButtons(){
   const btnTW=document.getElementById('btnTelework');
 
   // 範囲外ボタンの表示切り替え
-  document.getElementById('outsideBtns').style.display=isOutside?'block':'none';
+  document.getElementById('outsideBtns').style.display=isOutside?'flex':'none';
 
   if(!t){
     // 未打刻
@@ -364,7 +368,7 @@ function updateButtons(){
     btnOut.disabled=!hasName; // GPSに関係なく退勤可能
     // 出社で出勤→出張等で退勤（範囲外のみ表示）
     const canBizOut = isOutside && t.inType==='出社';
-    document.getElementById('outsideBtns').style.display=isOutside?'block':'none';
+    document.getElementById('outsideBtns').style.display=isOutside?'flex':'none';
     btnTW.disabled=true; // 勤務中はテレワーク不可
     document.getElementById('btnBiz').disabled=!canBizOut;
     // 出張等で出勤→出社で退勤（範囲内の場合、退勤ボタンで対応）
@@ -834,18 +838,23 @@ function loadNotices(){
   fetch(SHEET_URL+'?type=notices')
     .then(r=>r.json())
     .then(data=>{
+      document.getElementById('noticeLoading').style.display='none';
       if(data.notices && data.notices.length>0){
         noticeData = data.notices;
-        // バナーに最新1件を表示
         const banner=document.getElementById('noticeBanner');
         document.getElementById('noticeBannerText').textContent=data.notices[0].message;
         banner.style.display='flex';
         banner.style.alignItems='center';
         banner.addEventListener('touchend', function(e){e.preventDefault();openNotice();});
         banner.addEventListener('click', openNotice);
+      } else {
+        document.getElementById('noticeWrapper').style.display='none';
       }
     })
-    .catch(()=>{});
+    .catch(()=>{
+      document.getElementById('noticeLoading').style.display='none';
+      document.getElementById('noticeWrapper').style.display='none';
+    });
 }
 setTimeout(loadNotices, 1000);
 </script>
