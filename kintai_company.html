@@ -622,6 +622,7 @@ function saveEdit(){
   const r=records[editIdx];
   const originalIn=r.in||'';
   const originalOut=r.out||'';
+  const originalLeave=r.leave||'';
   const inT=document.getElementById('editIn').value;
   const outT=document.getElementById('editOut').value;
   if(!inT){showToast('出勤時刻は必須です');return;}
@@ -630,8 +631,10 @@ function saveEdit(){
   r.in=inT;r.out=outT;r.leave=leave;
   save();render();closeEdit();
   // 変更された項目だけスプレッドシートに送信
-  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.inType||'出社',empType:workType,leave:leave});
-  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.inType||'出社',empType:workType,leave:leave});
+  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.inType||'出社',empType:workType,leave:''});
+  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.inType||'出社',empType:workType,leave:''});
+  // 有給は変更があった時だけ1回送信
+  if(leave!==originalLeave) sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
   showToast('記録を更新しました ✓');
 }
 
