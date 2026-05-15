@@ -111,6 +111,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
     <div style="margin-top:8px;border-top:1px solid #F2F2F7;padding-top:8px;">
       <button class="btn-change" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;width:100%;">📅 月次締め処理</button>
+      <button class="btn-change" onclick="reloadLeaveBalance();event.stopPropagation()" style="color:#34C759;width:100%;">🔄 有給残を再取得</button>
     </div>
   </div>
 
@@ -909,6 +910,25 @@ function loadNotices(){
     });
 }
 setTimeout(loadNotices, 1000);
+
+function reloadLeaveBalance(){
+  if(!userName){showToast('先に氏名を設定してください');return;}
+  showToast('有給残を取得中…');
+  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName))
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.status==='ok' && data.leave){
+        leaveBalance = data.leave.days;
+        leaveHourBalance = data.leave.hours;
+        saveLeave();
+        render();
+        showToast('有給残を更新しました ✓');
+      } else {
+        showToast('有給残データが見つかりません');
+      }
+    })
+    .catch(()=>showToast('取得に失敗しました'));
+}
 
 // スプレッドシートから有給残を取得（未設定の場合のみ）
 function loadLeaveBalance(){
