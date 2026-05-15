@@ -455,6 +455,16 @@ async function sendToSheet(data){
       empType:workType  // flex or general
     });
     await fetch(SHEET_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+    // 有給打刻時にスプレッドシートの有給残シートにも記録
+    if(data.leave && data.leave !== ''){
+      const leaveParams=new URLSearchParams({
+        type:'recordLeave',
+        name:data.name,
+        date:data.date,
+        leave:data.leave
+      });
+      await fetch(SHEET_URL+'?'+leaveParams.toString(),{method:'GET',mode:'no-cors'});
+    }
   }catch(e){
     console.log('送信エラー',e);
   }
@@ -842,14 +852,6 @@ function saveLeaveModal(){
 
 // 初期化
 if(!userName) openNameModal();
-else if(leaveBalance<0){
-  // 有給残が未設定の場合、入力を促す
-  const bal=prompt('有給残日数を入力してください（例：10）');
-  if(bal!==null&&!isNaN(parseFloat(bal))){
-    leaveBalance=parseFloat(bal);
-    saveLeave();
-  }
-}
 render();
 checkGPS();
 // 5分ごとにGPS更新
