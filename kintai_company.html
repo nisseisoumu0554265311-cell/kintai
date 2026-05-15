@@ -463,7 +463,14 @@ async function sendToSheet(data){
         date:data.date,
         leave:data.leave
       });
-      await fetch(SHEET_URL+'?'+leaveParams.toString(),{method:'GET',mode:'no-cors'});
+      const leaveRes = await fetch(SHEET_URL+'?'+leaveParams.toString());
+      const leaveData = await leaveRes.json();
+      if(leaveData.status==='ok' && leaveData.leave){
+        leaveBalance = leaveData.leave.days;
+        leaveHourBalance = leaveData.leave.hours;
+        saveLeave();
+        render();
+      }
     }
   }catch(e){
     console.log('送信エラー',e);
