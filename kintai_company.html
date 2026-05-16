@@ -922,7 +922,7 @@ function reloadLeaveBalance(){
         leaveHourBalance = data.leave.hours;
         saveLeave();
         render();
-        alert('取得成功: '+leaveBalance+'日 '+leaveHourBalance+'h');
+        alert('取得成功: '+leaveBalance+'日 '+leaveHourBalance+'h'+'\nlocalStorage: '+localStorage.getItem('kintai_leave_balance')+'日 '+localStorage.getItem('kintai_leave_hour_balance')+'h');
         showToast('有給残を更新しました ✓');
       } else {
         alert('データなし: '+JSON.stringify(data));
