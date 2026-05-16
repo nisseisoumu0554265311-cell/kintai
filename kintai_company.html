@@ -922,12 +922,14 @@ function reloadLeaveBalance(){
         leaveHourBalance = data.leave.hours;
         saveLeave();
         render();
+        alert('取得成功: '+leaveBalance+'日 '+leaveHourBalance+'h');
         showToast('有給残を更新しました ✓');
       } else {
+        alert('データなし: '+JSON.stringify(data));
         showToast('有給残データが見つかりません');
       }
     })
-    .catch(()=>showToast('取得に失敗しました'));
+    .catch(e=>alert('エラー: '+e));
 }
 
 // スプレッドシートから有給残を取得（未設定の場合のみ）
