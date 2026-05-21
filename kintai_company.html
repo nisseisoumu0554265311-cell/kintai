@@ -115,8 +115,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
       <button class="btn-change" onclick="openWorkTypeModal();event.stopPropagation()" style="color:#5856D6;">勤務設定</button>
     </div>
     <div style="margin-top:8px;border-top:1px solid #F2F2F7;padding-top:8px;">
-      <button class="btn-change" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;width:100%;">📅 月次締め処理</button>
-      <button class="btn-change" onclick="reloadLeaveBalance();event.stopPropagation()" style="color:#34C759;width:100%;">🔄 有給残を再取得</button>
+     <div style="display:flex;gap:8px;">
+  <button class="btn-change" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;flex:1;">📅 月次締め</button>
+  <button class="btn-change" onclick="reloadLeaveBalance();event.stopPropagation()" style="color:#34C759;flex:1;">🔄 有給残再取得</button>
+</div>
     </div>
   </div>
 
