@@ -77,6 +77,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 </head>
 <body>
 <div class="wrap">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1rem;background:#E5E5EA;border-radius:10px;padding:3px;">
+  <button id="tabBtnToday" style="padding:.5rem 0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:#fff;color:#1C1C1E;box-shadow:0 1px 3px rgba(0,0,0,.12);" onclick="switchTab('today')">打刻</button>
+  <button id="tabBtnHistory" style="padding:.5rem 0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none;background:none;color:#6E6E73;" onclick="switchTab('history')">実績</button>
+</div>
+    <div id="tabToday">
   <div class="clock-time" id="clockTime">--:--:--</div>
   <div class="clock-date" id="clockDate"></div>
 
@@ -179,6 +184,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">今月の記録（タップで編集）</div>
   <div id="historyList"></div>
   <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.0.0　2026-05-11</div>
+      </div>
+<div id="tabHistory" style="display:none;">
+  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">過去12ヶ月の実績</div>
+  <div id="histPeriods"></div>
+</div>
 </div>
 
 <!-- お知らせモーダル -->
@@ -990,6 +1000,82 @@ function execMonthlyClose(){
       document.getElementById('monthlyCloseModal').classList.remove('open');
       showToast('❌ 通信エラーが発生しました');
     });
+}
+  function switchTab(tab){
+  document.getElementById('tabToday').style.display=tab==='today'?'block':'none';
+  document.getElementById('tabHistory').style.display=tab==='history'?'block':'none';
+  document.getElementById('tabBtnToday').style.background=tab==='today'?'#fff':'none';
+  document.getElementById('tabBtnToday').style.color=tab==='today'?'#1C1C1E':'#6E6E73';
+  document.getElementById('tabBtnToday').style.boxShadow=tab==='today'?'0 1px 3px rgba(0,0,0,.12)':'none';
+  document.getElementById('tabBtnHistory').style.background=tab==='history'?'#fff':'none';
+  document.getElementById('tabBtnHistory').style.color=tab==='history'?'#1C1C1E':'#6E6E73';
+  document.getElementById('tabBtnHistory').style.boxShadow=tab==='history'?'0 1px 3px rgba(0,0,0,.12)':'none';
+  if(tab==='history') renderHistory();
+}
+
+function getPastPeriods(n){
+  const periods=[],now=new Date(),d=now.getDate(),y=now.getFullYear(),m=now.getMonth();
+  let baseY=y,baseM=m;
+  if(d<=20){baseM=m-1;if(baseM<0){baseM=11;baseY=y-1;}}
+  for(let i=1;i<=n;i++){
+    let sM=baseM-i,sY=baseY;
+    while(sM<0){sM+=12;sY--;}
+    let eM=sM+1,eY=sY;
+    if(eM>11){eM=0;eY=sY+1;}
+    periods.push({start:`${sY}-${pad(sM+1)}-21`,end:`${eY}-${pad(eM+1)}-20`});
+  }
+  return periods;
+}
+
+function renderHistory(){
+  const periods=[getCurrentPeriod(),...getPastPeriods(12)];
+  const container=document.getElementById('histPeriods');
+  container.innerHTML='';
+  periods.forEach((period,pi)=>{
+    const pr=records.filter(r=>inPeriod(r.date,period));
+    let tw=0,tot=0;
+    pr.forEach(r=>{const c=calcDay(r);if(c){tw+=c.totalMins;tot+=c.otMins;}});
+    const ls=calcLeaveStats(pr);
+    const otColor=tot>0?'#FF3B30':tot<0?'#34C759':'#8E8E93';
+    const label=pi===0
+      ?`今月（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`
+      :`${period.start.slice(0,7).replace('-','/')}（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`;
+    const leaveStr=ls.days>0||ls.hours>0?`有給 ${ls.days>0?ls.days+'日':''}${ls.hours>0?' '+ls.hours+'h':''}`.trim():'';
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border-radius:14px;padding:.85rem 1rem;margin-bottom:8px;cursor:pointer;';
+    div.innerHTML=`
+      <div class="hp-top" style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:14px;font-weight:500;color:#1C1C1E;">${label}</div>
+        <div style="font-size:15px;font-weight:500;color:${otColor};">${hm(tot)}</div>
+      </div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;">
+        <span>出勤 ${pr.filter(r=>r.in).length}日</span>
+        <span>実労働 ${hm(tw)}</span>
+        <span>時間外 ${hm(tot)}</span>
+        ${leaveStr?`<span style="color:#FF9500;">${leaveStr}</span>`:''}
+      </div>
+      <div id="histDet-${pi}" style="display:none;margin-top:.75rem;border-top:0.5px solid #E5E5EA;padding-top:.75rem;">
+        ${pr.length===0?'<div style="font-size:12px;color:#8E8E93;padding:6px 0;">記録なし</div>':
+          pr.map(r=>{
+            const idx=records.indexOf(r);
+            const c=calcDay(r);
+            const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
+            const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
+            const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:0.5px solid #F2F2F7;cursor:pointer;" onclick="openEdit(${idx})">
+              <span style="color:#8E8E93;width:55px;">${r.date.slice(5).replace('-','/')}</span>
+              <span style="flex:1;text-align:center;color:#1C1C1E;">${typeIcon} ${r.in||'--'}→${r.out||'--'} ${c?hm(c.totalMins):'--'}</span>
+              <span style="width:55px;text-align:center;">${leaveTag}</span>
+              <span style="width:50px;text-align:right;color:${otC};">${c?hm(c.otMins):''}</span>
+            </div>`;
+          }).join('')}
+      </div>`;
+    div.querySelector('.hp-top').addEventListener('click',()=>{
+      const det=document.getElementById(`histDet-${pi}`);
+      det.style.display=det.style.display==='none'?'block':'none';
+    });
+    container.appendChild(div);
+  });
 }
 </script>
 </body>
