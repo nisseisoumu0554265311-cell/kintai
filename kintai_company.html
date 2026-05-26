@@ -184,12 +184,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     📍 会社から100m以内で出社打刻、範囲外はテレワーク
   </div>
 
-  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">今月の記録（タップで編集）</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
+    <div style="font-size:13px;font-weight:500;color:#8E8E93;">今月の記録（タップで編集）</div>
+  </div>
   <div id="historyList"></div>
   <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.0.0　2026-05-11</div>
       </div>
 <div id="tabHistory" style="display:none;">
-  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;">過去12ヶ月の実績</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
+    <div style="font-size:13px;font-weight:500;color:#8E8E93;">今月の記録</div>
+    <button onclick="openAddRecord()" style="font-size:12px;background:#34C759;color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-weight:500;">＋ 後日追加</button>
+  </div>
+  <div id="histCurrentMonth"></div>
+  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;margin-top:1rem;">過去の実績</div>
   <div id="histPeriods"></div>
 </div>
 </div>
@@ -212,6 +219,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">日付</label>
       <input type="date" id="editDate" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+    </div>
+    <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+      <label style="font-size:15px;color:#1C1C1E;">勤務区分</label>
+      <select id="editWorkType" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+        <option value="出社">出社</option>
+        <option value="テレワーク">テレワーク</option>
+        <option value="出張等">出張等</option>
+      </select>
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">出勤時刻</label>
@@ -613,6 +628,25 @@ function calcLeaveStats(pr){
 // 編集機能
 let editIdx = null;
 
+function openAddRecord(){
+  editIdx=-1;
+  document.getElementById('editTitle').textContent='打刻を後日追加';
+  const period=getCurrentPeriod();
+  const today=new Date().toISOString().slice(0,10);
+  const editDateEl=document.getElementById('editDate');
+  editDateEl.value=today<period.end?today:period.end;
+  editDateEl.min=period.start;
+  editDateEl.max=period.end;
+  editDateEl.readOnly=false;
+  document.getElementById('editWorkType').value='出社';
+  document.getElementById('editIn').value='';
+  document.getElementById('editOut').value='';
+  document.getElementById('editLeave').value='';
+  document.getElementById('btnDel').style.display='none';
+  document.getElementById('btnCancelOut').style.display='none';
+  document.getElementById('editOverlay').classList.add('open');
+}
+
 function overlayTap(e){if(e.target===document.getElementById('editOverlay'))closeEdit();}
 
 function openEdit(idx){
@@ -620,6 +654,8 @@ function openEdit(idx){
   const r=records[idx];
   document.getElementById('editTitle').textContent=r.date+' の記録を編集';
   document.getElementById('editDate').value=r.date;
+  document.getElementById('editDate').readOnly=true;
+  document.getElementById('editWorkType').value=r.inType||'出社';
   document.getElementById('editIn').value=r.in||'';
   document.getElementById('editOut').value=r.out||'';
   document.getElementById('editLeave').value=r.leave||'';
@@ -632,21 +668,41 @@ function openEdit(idx){
 function closeEdit(){document.getElementById('editOverlay').classList.remove('open');editIdx=null;}
 
 function saveEdit(){
+  const inT=document.getElementById('editIn').value;
+  const outT=document.getElementById('editOut').value;
+  const leave=document.getElementById('editLeave').value;
+  const wt=document.getElementById('editWorkType').value;
+
+  if(editIdx===-1){
+    // 新規追加モード
+    const date=document.getElementById('editDate').value;
+    if(!date){showToast('日付を入力してください');return;}
+    if(!inT&&!leave){showToast('出勤時刻または有給を入力してください');return;}
+    if(outT&&inT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
+    const existing=records.findIndex(r=>r.date===date);
+    if(existing>=0){showToast('その日の記録は既に存在します');return;}
+    const newRec={date,inType:wt,in:inT,out:outT,leave};
+    records.push(newRec);
+    records.sort((a,b)=>a.date<b.date?-1:1);
+    save();render();closeEdit();
+    if(inT) sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
+    if(outT) sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
+    if(leave) sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave});
+    showToast('記録を追加しました ✓');
+    return;
+  }
+
+  // 既存レコード編集モード
   const r=records[editIdx];
   const originalIn=r.in||'';
   const originalOut=r.out||'';
   const originalLeave=r.leave||'';
-  const inT=document.getElementById('editIn').value;
-  const outT=document.getElementById('editOut').value;
   if(!inT){showToast('出勤時刻は必須です');return;}
   if(outT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
-  const leave=document.getElementById('editLeave').value;
-  r.in=inT;r.out=outT;r.leave=leave;
+  r.in=inT;r.out=outT;r.leave=leave;r.inType=wt;
   save();render();closeEdit();
-  // 変更された項目だけスプレッドシートに送信
-  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:r.inType||'出社',empType:workType,leave:''});
-  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:r.inType||'出社',empType:workType,leave:''});
-  // 有給は変更があった時だけ1回送信
+  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
+  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
   if(leave!==originalLeave) sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
   showToast('記録を更新しました ✓');
 }
@@ -1031,17 +1087,50 @@ function getPastPeriods(n){
 
 function renderHistory(){
   const periods=[getCurrentPeriod(),...getPastPeriods(12)];
+  const currentPeriod=periods[0];
+  const pastPeriods=periods.slice(1);
+
+  // 今月の記録を実績タブ上部に表示
+  const currentContainer=document.getElementById('histCurrentMonth');
+  if(currentContainer){
+    const pr=records.filter(r=>inPeriod(r.date,currentPeriod));
+    currentContainer.innerHTML='';
+    if(pr.length===0){
+      currentContainer.innerHTML='<div style="font-size:12px;color:#C7C7CC;padding:8px 4px;">記録なし</div>';
+    } else {
+      pr.forEach(r=>{
+        const idx=records.indexOf(r);
+        const c=calcDay(r);
+        const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
+        const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
+        const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
+        const d=document.createElement('div');
+        d.style.cssText='background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;';
+        d.onclick=()=>openEdit(idx);
+        d.innerHTML=`
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#8E8E93;font-size:13px;">${r.date.slice(5).replace('-','/')} ${typeIcon}</span>
+            <span style="font-size:13px;color:#1C1C1E;">${r.in||'--'}〜${r.out||'--'} ${leaveTag}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E8E93;margin-top:3px;">
+            <span>実労働 ${c?hm(c.totalMins):'--'}</span>
+            <span style="color:${otC};">時間外 ${c?hm(c.otMins):'--'}</span>
+          </div>`;
+        currentContainer.appendChild(d);
+      });
+    }
+  }
+
+  // 過去の実績
   const container=document.getElementById('histPeriods');
   container.innerHTML='';
-  periods.forEach((period,pi)=>{
+  pastPeriods.forEach((period,pi)=>{
     const pr=records.filter(r=>inPeriod(r.date,period));
     let tw=0,tot=0;
     pr.forEach(r=>{const c=calcDay(r);if(c){tw+=c.totalMins;tot+=c.otMins;}});
     const ls=calcLeaveStats(pr);
     const otColor=tot>0?'#FF3B30':tot<0?'#34C759':'#8E8E93';
-    const label=pi===0
-      ?`今月（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`
-      :`${period.start.slice(0,7).replace('-','/')}（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`;
+    const label=`${period.start.slice(0,7).replace('-','/')}（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`;
     const leaveStr=ls.days>0||ls.hours>0?`有給 ${ls.days>0?ls.days+'日':''}${ls.hours>0?' '+ls.hours+'h':''}`.trim():'';
     const div=document.createElement('div');
     div.style.cssText='background:#fff;border-radius:14px;padding:.85rem 1rem;margin-bottom:8px;cursor:pointer;';
