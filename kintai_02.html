@@ -938,7 +938,15 @@ async function downloadExcel(p){
   r2.getCell(7).value='②法定労働時間合計';
   r2.getCell(9).value={formula:`SUM(D${dataStartRow}:D${totalRows})`};
   r2.getCell(9).border=borderAll;
-  r2.getCell(10).value={formula:`SUM(D${dataStartRow}:D${totalRows})*8/24`};
+  // J36: 稼働日数×8時間を直接計算して書き込む（ExcelJSの数式バグ回避）
+  // 後でformula+resultで上書き
+  const workDays=dateList.filter(date=>{
+    const rec=pr.find(r=>r.date===date);
+    const holiday=isHoliday(date);
+    const leave=rec?rec.leave||'':'';
+    return !holiday&&(rec&&rec.in||(leave&&leave!=='all'));
+  }).length;
+  r2.getCell(10).value={formula:`SUM(D${dataStartRow}:D${totalRows})*8/24`, result: workDays*8/24};
   r2.getCell(10).numFmt='[h]:mm'; r2.getCell(10).border=borderAll;
   r2.getCell(12).value='時間換算';
   r2.getCell(13).value={formula:`ROUNDDOWN(M${rowIdx},0)`};
