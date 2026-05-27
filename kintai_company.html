@@ -728,21 +728,22 @@ function calcDay(r, wtype){
   let bMins=0;
   breaks.forEach(b=>{const os=Math.max(inM,b.s),oe=Math.min(outM,b.e);if(oe>os)bMins+=oe-os;});
 
+  // 有給分を加算（フレックスのみ）
+  const leaveMap={'all':475,'half_am':240,'half_pm':240,'1h':60,'2h':120,'3h_am':180,'3h_pm':180,'half':240,'1h':60,'2h':120,'3h':180};
+  const leaveMins=(r.leave&&leaveMap[r.leave])||0;
+
   if(type==='flex'){
-    // フレックス：実労働 - 7h55m
     const totalMins=Math.max(0,outM-inM-bMins);
-    const otMins=totalMins-(7*60+55);
+    const otMins=totalMins+leaveMins-(7*60+55);
     return{totalMins,otMins};
   } else {
-    // 一般：8時からカウント、17:10以降30分単位切り捨て
     const WORK_START=8*60,OT_START=17*60+10;
-    const effectiveIn=Math.max(inM,WORK_START); // 8時前は8時からカウント
+    const effectiveIn=Math.max(inM,WORK_START);
     const totalMins=Math.max(0,outM-effectiveIn-bMins);
-    // 残業：17:10以降を30分単位切り捨て
     let otMins=0;
     if(outM>OT_START){
       const rawOT=outM-OT_START;
-      otMins=Math.floor(rawOT/30)*30; // 30分単位切り捨て
+      otMins=Math.floor(rawOT/30)*30;
     }
     return{totalMins,otMins};
   }
