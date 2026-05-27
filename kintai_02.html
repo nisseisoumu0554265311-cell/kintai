@@ -938,18 +938,16 @@ async function downloadExcel(p){
   r2.getCell(7).value='②法定労働時間合計';
   r2.getCell(9).value={formula:`SUM(D${dataStartRow}:D${totalRows})`};
   r2.getCell(9).border=borderAll;
-  const j36cell=r2.getCell(10);
-  j36cell.value={formula:`SUM(D${dataStartRow}:D${totalRows})*8/24`};
-  j36cell.numFmt='[h]:mm'; j36cell.border=borderAll;
+  r2.getCell(10).value={formula:`SUM(D${dataStartRow}:D${totalRows})*8/24`};
+  r2.getCell(10).numFmt='[h]:mm'; r2.getCell(10).border=borderAll;
   r2.getCell(12).value='時間換算';
   r2.getCell(13).value={formula:`ROUNDDOWN(M${rowIdx},0)`};
 
   const r3=ws.getRow(rowIdx+2);
   r3.getCell(7).value='法定外労働時間合計';
   r3.getCell(9).value='①-②';
-  const j37cell=r3.getCell(10);
-  j37cell.value={formula:`J${rowIdx}-J${rowIdx+1}`};
-  j37cell.numFmt='[h]:mm'; j37cell.border=borderAll;
+  r3.getCell(10).value={formula:`J${rowIdx}-J${rowIdx+1}`};
+  r3.getCell(10).numFmt='[h]:mm'; r3.getCell(10).border=borderAll;
   r3.getCell(12).value='端数';
   r3.getCell(13).value={formula:`M${rowIdx}-M${rowIdx+1}`};
 
