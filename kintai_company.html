@@ -245,6 +245,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
         <option value="1h">時間休1h</option>
         <option value="2h">時間休2h</option>
         <option value="3h">時間休3h</option>
+        <option value="special">特別有給（特給）</option>
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:1rem;">
@@ -484,7 +485,7 @@ async function sendToSheet(data){
     });
     await fetch(SHEET_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
     // 有給打刻時にスプレッドシートの有給残シートにも記録
-    if(data.leave && data.leave !== ''){
+    if(data.leave && data.leave !== '' && data.leave !== 'special'){
       const leaveParams=new URLSearchParams({
         type:'recordLeave',
         name:data.name,
@@ -609,8 +610,8 @@ function saveLeave(){
 let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or general
 const WORK_TYPE_PASSWORD = '2022';
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
-const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180};
-const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','1h':'時間休1h','2h':'時間休2h','3h':'時間休3h'};
+const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180,'special':475};
+const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','1h':'時間休1h','2h':'時間休2h','3h':'時間休3h','special':'特別有給'};
 
 function calcLeaveStats(pr){
   let days=0,hours=0;
