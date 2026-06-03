@@ -827,7 +827,7 @@ function render(){
   const list=document.getElementById('historyList');
   if(list){
     list.innerHTML='';
-    [...pr].forEach(r=>{
+    [...pr].sort((a,b)=>a.date<b.date?1:-1).forEach(r=>{
       const idx=records.indexOf(r);
       const c=calcDay(r);
       const ws=c?hm(c.totalMins):(r.out?'--':'退勤未打刻');
@@ -1100,7 +1100,7 @@ function renderHistory(){
     if(pr.length===0){
       currentContainer.innerHTML='<div style="font-size:12px;color:#C7C7CC;padding:8px 4px;">記録なし</div>';
     } else {
-      pr.forEach(r=>{
+      [...pr].sort((a,b)=>a.date<b.date?1:-1).forEach(r=>{
         const idx=records.indexOf(r);
         const c=calcDay(r);
         const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
