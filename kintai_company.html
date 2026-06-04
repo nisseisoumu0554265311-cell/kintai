@@ -241,7 +241,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
       <select id="editLeave" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
         <option value="">なし</option>
         <option value="all">全日有給</option>
-        <option value="half">半日有給（4h）</option>
+        <option value="half_am">午前半休（4h）</option>
+        <option value="half_pm">午後半休（4h）</option>
         <option value="1h">時間休1h</option>
         <option value="2h">時間休2h</option>
         <option value="3h">時間休3h</option>
@@ -592,7 +593,7 @@ function calcLeaveStats(pr){
   pr.forEach(r=>{
     if(!r.leave)return;
     if(r.leave==='all') days+=1;
-    else if(r.leave==='half') days+=0.5;
+    else if(r.leave==='half'||r.leave==='half_am'||r.leave==='half_pm') days+=0.5;
     else if(r.leave==='1h') hours+=1;
     else if(r.leave==='2h') hours+=2;
     else if(r.leave==='3h') hours+=3;
