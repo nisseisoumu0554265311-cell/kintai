@@ -461,12 +461,28 @@ function checkNameInput(){
 function saveName(){
   const v=document.getElementById('nameInput').value.trim();
   if(!v)return;
+  const wasEmpty=!userName;            // 初回設定かどうか
   userName=v;
   localStorage.setItem('kintai_name',v);
   document.getElementById('nameDisplay').textContent=v;
   document.getElementById('nameOverlay').classList.remove('open');
   updateButtons();
   showToast(`氏名を「${v}」に設定しました`);
+  // 初回のみ：勤務タイプを選んでもらう（打刻前に確定させる）
+  if(wasEmpty && !localStorage.getItem('kintai_work_type_set')){
+    openInitialWorkType();
+  }
+}
+
+function openInitialWorkType(){
+  document.getElementById('workTypeStep1').style.display='none';
+  document.getElementById('workTypeStep2').style.display='block';
+  document.getElementById('btnFlex').style.background=workType==='flex'?'#5856D6':'none';
+  document.getElementById('btnFlex').style.color=workType==='flex'?'#fff':'#5856D6';
+  document.getElementById('btnGeneral').style.background=workType==='general'?'#5856D6':'none';
+  document.getElementById('btnGeneral').style.color=workType==='general'?'#fff':'#1C1C1E';
+  document.getElementById('btnGeneral').style.borderColor=workType==='general'?'#5856D6':'#E5E5EA';
+  document.getElementById('workTypeModal').classList.add('open');
 }
 document.getElementById('nameInput').addEventListener('input',checkNameInput);
 document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')saveName();});
@@ -899,6 +915,7 @@ function checkWorkTypePassword(){
 function setWorkType(type){
   workType=type;
   saveWorkType();
+  localStorage.setItem('kintai_work_type_set','1');  // 勤務タイプ設定済み
   render();
   document.getElementById('workTypeModal').classList.remove('open');
   showToast(`勤務タイプを${type==='flex'?'フレックス':'一般'}に変更しました ✓`);
@@ -927,6 +944,7 @@ function saveLeaveModal(){
 
 // 初期化
 if(!userName) openNameModal();
+else if(!localStorage.getItem('kintai_work_type_set')) openInitialWorkType();
 render();
 checkGPS();
 // 5分ごとにGPS更新
