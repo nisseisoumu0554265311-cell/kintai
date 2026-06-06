@@ -186,6 +186,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
     <div style="font-size:13px;font-weight:500;color:#8E8E93;">今月の記録（タップで編集）</div>
+    <button onclick="syncFromSheet(true)" style="font-size:12px;background:none;color:#007AFF;border:none;cursor:pointer;font-weight:500;">🔄 同期</button>
   </div>
   <div id="historyList"></div>
   <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.0.0　2026-05-11</div>
@@ -492,6 +493,7 @@ function saveName(){
     openInitialWorkType();
   }
   tryStartQr();
+  syncFromSheet();
 }
 
 function openInitialWorkType(){
@@ -940,6 +942,7 @@ function setWorkType(type){
   document.getElementById('workTypeModal').classList.remove('open');
   showToast(`勤務タイプを${type==='flex'?'フレックス':'一般'}に変更しました ✓`);
   tryStartQr();
+  syncFromSheet();
 }
 
 function openLeaveModal(){
@@ -961,6 +964,37 @@ function saveLeaveModal(){
   render();
   document.getElementById('leaveModal').classList.remove('open');
   showToast(`有給残${v}日・時間休残${leaveHourBalance}hに設定しました ✓`);
+}
+
+// ============ シート同期（読み込み）============
+async function syncFromSheet(showMsg){
+  if(!SHEET_URL || SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return;
+  if(!userName) return;
+  try{
+    const res = await fetch(SHEET_URL+'?type=getRecords&name='+encodeURIComponent(userName));
+    const data = await res.json();
+    if(data && data.status==='ok' && Array.isArray(data.records)){
+      records = data.records.map(function(r){
+        return {
+          date: r.date,
+          in: r.in || '',
+          out: r.out || '',
+          inType: r.workType || '出社',
+          outType: r.out ? (r.workType || '出社') : '',
+          leave: r.leave || ''
+        };
+      });
+      records.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
+      save();
+      render();
+      if(showMsg) showToast('シートと同期しました ✓');
+    } else if(showMsg){
+      showToast('同期できませんでした');
+    }
+  }catch(e){
+    console.log('同期エラー', e);
+    if(showMsg) showToast('同期できませんでした（通信エラー）');
+  }
 }
 
 // ============ QR打刻 ============
@@ -1024,6 +1058,7 @@ if(!userName) openNameModal();
 else if(!localStorage.getItem('kintai_work_type_set')) openInitialWorkType();
 tryStartQr();
 render();
+syncFromSheet();
 checkGPS();
 // 5分ごとにGPS更新
 setInterval(checkGPS, 5*60*1000);
