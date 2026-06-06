@@ -338,6 +338,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
 </div>
 
+<!-- QR打刻モーダル -->
+<div class="overlay" id="qrOverlay">
+  <div class="modal" style="text-align:center;">
+    <div id="qrBody">
+      <div style="font-size:13px;color:#8E8E93;margin-bottom:4px;">QR打刻（出社）</div>
+      <div id="qrName" style="font-size:22px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">--</div>
+      <div id="qrTime" style="font-size:14px;color:#8E8E93;margin-bottom:1.25rem;"></div>
+      <button id="qrInBtn" onclick="qrDo('in')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#34C759;color:#fff;margin-bottom:10px;">出勤を記録する</button>
+      <button id="qrOutBtn" onclick="qrDo('out')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#FF3B30;color:#fff;margin-bottom:10px;">退勤を記録する</button>
+      <button onclick="closeQr()" style="width:100%;padding:.7rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;">閉じる</button>
+    </div>
+    <div id="qrDone" style="display:none;">
+      <div style="font-size:48px;margin-bottom:10px;">✓</div>
+      <div id="qrDoneMsg" style="font-size:18px;font-weight:600;color:#1C1C1E;margin-bottom:1.25rem;">記録しました</div>
+      <button onclick="closeQr()" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#007AFF;color:#fff;">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -472,6 +491,7 @@ function saveName(){
   if(wasEmpty && !localStorage.getItem('kintai_work_type_set')){
     openInitialWorkType();
   }
+  tryStartQr();
 }
 
 function openInitialWorkType(){
@@ -919,6 +939,7 @@ function setWorkType(type){
   render();
   document.getElementById('workTypeModal').classList.remove('open');
   showToast(`勤務タイプを${type==='flex'?'フレックス':'一般'}に変更しました ✓`);
+  tryStartQr();
 }
 
 function openLeaveModal(){
@@ -942,9 +963,66 @@ function saveLeaveModal(){
   showToast(`有給残${v}日・時間休残${leaveHourBalance}hに設定しました ✓`);
 }
 
+// ============ QR打刻 ============
+let qrMode = false;
+(function(){
+  try { qrMode = new URLSearchParams(location.search).get('qr') === '1'; } catch(e){ qrMode = false; }
+})();
+
+function tryStartQr(){
+  if(!qrMode) return;
+  if(!userName) return;                                     // 名前未登録 → 初期設定後に再度呼ばれる
+  if(!localStorage.getItem('kintai_work_type_set')) return; // タイプ未設定 → 設定後に再度呼ばれる
+  showQrConfirm();
+}
+
+function showQrConfirm(){
+  document.getElementById('qrName').textContent = userName + ' さん';
+  document.getElementById('qrTime').textContent = '現在 ' + nowTimeStr();
+  document.getElementById('qrBody').style.display = 'block';
+  document.getElementById('qrDone').style.display = 'none';
+  document.getElementById('qrOverlay').classList.add('open');
+}
+
+function qrDo(action){
+  if(isSending){ showToast('送信中です…'); return; }
+  isSending = true; setTimeout(()=>isSending=false, 3000);
+  const now = nowTimeStr();
+  if(action === 'in'){
+    let t = getToday();
+    if(!t){ t = {date:todayKey(), in:now, out:'', inType:'出社', outType:''}; records.unshift(t); }
+    else { t.in = now; t.inType = '出社'; }
+    save();
+    sendToSheet({name:userName, date:todayKey(), type:'出勤', time:now, workType:'出社', empType:workType});
+    render();
+    qrShowDone('出勤を記録しました（' + now + '）');
+  } else {
+    let t = getToday();
+    if(!t){ t = {date:todayKey(), in:'', out:now, inType:'出社', outType:'出社'}; records.unshift(t); }
+    else { t.out = now; t.outType = '出社'; }
+    save();
+    sendToSheet({name:userName, date:todayKey(), type:'退勤', time:now, workType:'出社', empType:workType});
+    render();
+    qrShowDone('退勤を記録しました（' + now + '）');
+  }
+}
+
+function qrShowDone(msg){
+  document.getElementById('qrDoneMsg').textContent = msg;
+  document.getElementById('qrBody').style.display = 'none';
+  document.getElementById('qrDone').style.display = 'block';
+}
+
+function closeQr(){
+  document.getElementById('qrOverlay').classList.remove('open');
+  qrMode = false;
+  try { if(history.replaceState) history.replaceState(null, '', location.origin + location.pathname); } catch(e){}
+}
+
 // 初期化
 if(!userName) openNameModal();
 else if(!localStorage.getItem('kintai_work_type_set')) openInitialWorkType();
+tryStartQr();
 render();
 checkGPS();
 // 5分ごとにGPS更新
