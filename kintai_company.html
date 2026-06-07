@@ -642,9 +642,13 @@ function calcLeaveStats(pr){
 // 有給定数
 let leaveBalance = parseFloat(localStorage.getItem('kintai_leave_balance')||'-1');
 let leaveHourBalance = parseFloat(localStorage.getItem('kintai_leave_hour_balance')||'-1');
+let leaveInitDays = parseFloat(localStorage.getItem('kintai_leave_init_days')||'-1');
+let leaveInitHours = parseFloat(localStorage.getItem('kintai_leave_init_hours')||'-1');
 function saveLeave(){
   localStorage.setItem('kintai_leave_balance',leaveBalance);
   localStorage.setItem('kintai_leave_hour_balance',leaveHourBalance);
+  localStorage.setItem('kintai_leave_init_days',leaveInitDays);
+  localStorage.setItem('kintai_leave_init_hours',leaveInitHours);
 }
 let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or general
 const WORK_TYPE_PASSWORD = '2022';
@@ -838,10 +842,17 @@ function render(){
   const infoOT=document.getElementById('infoOT');
   if(infoOT) infoOT.textContent=workType==='flex'?'時間外：実労働時間 - 7h55m':'定時：8:00〜17:00　残業：17:10以降30分単位切り捨て';
 
-  // 有給状況表示
-  const ls=calcLeaveStats(pr);
-  document.getElementById('leaveUsed').textContent=ls.days+'日';
-  document.getElementById('leaveHours').textContent=ls.hours+'h';
+  // 有給状況表示（消化＝年初−残：年間トータル）
+  if(leaveInitDays>=0 && leaveBalance>=0){
+    const usedD=Math.round((leaveInitDays-leaveBalance)*10)/10;
+    const usedH=Math.round((leaveInitHours-leaveHourBalance)*10)/10;
+    document.getElementById('leaveUsed').textContent=usedD+'日';
+    document.getElementById('leaveHours').textContent=usedH+'h';
+  } else {
+    const ls=calcLeaveStats(pr);
+    document.getElementById('leaveUsed').textContent=ls.days+'日';
+    document.getElementById('leaveHours').textContent=ls.hours+'h';
+  }
   if(leaveBalance>=0){
     // D・E列の残をそのまま表示（Apps Scriptが消化後の値を管理）
     document.getElementById('leaveRemain').textContent=leaveBalance.toFixed(1).replace('.0','')+'日'+(leaveHourBalance>=0?' / '+leaveHourBalance+'h':'');
@@ -1102,6 +1113,8 @@ function reloadLeaveBalance(){
       if(data.status==='ok' && data.leave){
         leaveBalance = data.leave.days;
         leaveHourBalance = data.leave.hours;
+        if(data.leave.initDays!==undefined) leaveInitDays = data.leave.initDays;
+        if(data.leave.initHours!==undefined) leaveInitHours = data.leave.initHours;
         saveLeave();
         render();
         showToast('有給残を更新しました ✓');
@@ -1115,13 +1128,15 @@ function reloadLeaveBalance(){
 // スプレッドシートから有給残を取得（未設定の場合のみ）
 function loadLeaveBalance(){
   if(!userName) return;
-  if(leaveBalance >= 0) return; // 既に設定済みの場合はスキップ
+  if(leaveBalance >= 0 && leaveInitDays >= 0) return; // 残・年初とも取得済みならスキップ
   fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName))
     .then(r=>r.json())
     .then(data=>{
       if(data.status==='ok' && data.leave){
         leaveBalance = data.leave.days;
         leaveHourBalance = data.leave.hours;
+        if(data.leave.initDays!==undefined) leaveInitDays = data.leave.initDays;
+        if(data.leave.initHours!==undefined) leaveInitHours = data.leave.initHours;
         saveLeave();
         render();
         showToast('有給残を取得しました');
