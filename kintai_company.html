@@ -343,12 +343,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 <div class="overlay" id="qrOverlay">
   <div class="modal" style="text-align:center;">
     <div id="qrBody">
-      <div style="font-size:13px;color:#8E8E93;margin-bottom:4px;">QR打刻（出社）</div>
+      <div style="font-size:13px;color:#8E8E93;margin-bottom:4px;">QR打刻</div>
       <div id="qrName" style="font-size:22px;font-weight:700;color:#1C1C1E;margin-bottom:4px;">--</div>
       <div id="qrTime" style="font-size:14px;color:#8E8E93;margin-bottom:1.25rem;"></div>
-      <button id="qrInBtn" onclick="qrDo('in')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#34C759;color:#fff;margin-bottom:10px;">出勤を記録する</button>
-      <button id="qrOutBtn" onclick="qrDo('out')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#FF3B30;color:#fff;margin-bottom:10px;">退勤を記録する</button>
+      <button id="qrPunchBtn" onclick="qrPunch()" style="width:100%;padding:1rem 0;border-radius:14px;font-size:18px;font-weight:600;cursor:pointer;border:none;background:#34C759;color:#fff;margin-bottom:10px;">打刻する</button>
       <button onclick="closeQr()" style="width:100%;padding:.7rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;">閉じる</button>
+    </div>
+    <div id="qrChoice" style="display:none;">
+      <div style="font-size:13px;color:#8E8E93;margin-bottom:4px;">会社の範囲外です。勤務区分を選択</div>
+      <div id="qrChoiceName" style="font-size:18px;font-weight:700;color:#1C1C1E;margin-bottom:14px;">--</div>
+      <button id="qrChoiceOffice" onclick="qrRecord('出社')" style="display:none;width:100%;padding:1rem 0;border-radius:14px;font-size:17px;font-weight:600;cursor:pointer;border:none;background:#34C759;color:#fff;margin-bottom:10px;">🏢 出社</button>
+      <button onclick="qrRecord('テレワーク')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:17px;font-weight:600;cursor:pointer;border:none;background:#007AFF;color:#fff;margin-bottom:10px;">🏠 テレワーク</button>
+      <button onclick="qrRecord('出張等')" style="width:100%;padding:1rem 0;border-radius:14px;font-size:17px;font-weight:600;cursor:pointer;border:none;background:#5856D6;color:#fff;margin-bottom:10px;">🚗 出張等</button>
+      <button onclick="closeQr()" style="width:100%;padding:.7rem 0;border-radius:12px;font-size:15px;cursor:pointer;border:none;background:none;color:#8E8E93;">キャンセル</button>
     </div>
     <div id="qrDone" style="display:none;">
       <div style="font-size:48px;margin-bottom:10px;">✓</div>
@@ -1012,36 +1019,95 @@ function showQrConfirm(){
   document.getElementById('qrName').textContent = userName + ' さん';
   document.getElementById('qrTime').textContent = '現在 ' + nowTimeStr();
   document.getElementById('qrBody').style.display = 'block';
+  document.getElementById('qrChoice').style.display = 'none';
   document.getElementById('qrDone').style.display = 'none';
+  const pb = document.getElementById('qrPunchBtn');
+  if(pb){ pb.disabled = false; pb.textContent = '打刻する'; }
   document.getElementById('qrOverlay').classList.add('open');
 }
 
-function qrDo(action){
-  if(isSending){ showToast('送信中です…'); return; }
+// QR打刻用GPS判定（inside / outside / error）
+function qrGetGps(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){ resolve('error'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const dist = calcDistance(pos.coords.latitude, pos.coords.longitude, COMPANY_LAT, COMPANY_LNG);
+        resolve(dist <= ALLOWED_RADIUS ? 'inside' : 'outside');
+      },
+      err=>{ resolve('error'); },
+      {enableHighAccuracy:true, timeout:10000, maximumAge:0}
+    );
+  });
+}
+
+let qrPendingAction = null;
+
+async function qrPunch(){
+  const btn = document.getElementById('qrPunchBtn');
+  if(btn && btn.disabled) return;           // 多重タップ防止
+  if(btn){ btn.disabled = true; btn.textContent = '確認中…'; }
+  // 最新の打刻状況をシートから取得して出勤/退勤を自動判定
+  await syncFromSheet(false);
+  const t = getToday();
+  let action;
+  if(!t || !t.in) action = 'in';
+  else if(!t.out) action = 'out';
+  else action = 'done';
+  if(action === 'done'){
+    if(btn){ btn.disabled = false; btn.textContent = '打刻する'; }
+    qrShowDone('本日は出勤・退勤とも記録済みです');
+    return;
+  }
+  qrPendingAction = action;
+  // GPS判定
+  const gps = await qrGetGps();
+  if(btn){ btn.disabled = false; btn.textContent = '打刻する'; }
+  if(gps === 'inside'){
+    qrRecord('出社');                        // 会社内 → 自動で出社
+  } else {
+    showQrChoice(gps === 'error');           // 会社外/取得失敗 → 区分を選択
+  }
+}
+
+function showQrChoice(allowOffice){
+  document.getElementById('qrChoiceName').textContent =
+    userName + ' さん（' + (qrPendingAction==='in'?'出勤':'退勤') + '）';
+  document.getElementById('qrChoiceOffice').style.display = allowOffice ? 'block' : 'none';
+  document.getElementById('qrBody').style.display = 'none';
+  document.getElementById('qrChoice').style.display = 'block';
+  document.getElementById('qrDone').style.display = 'none';
+}
+
+function qrRecord(wt){
+  if(isSending){ return; }
   isSending = true; setTimeout(()=>isSending=false, 3000);
+  const action = qrPendingAction;
   const now = nowTimeStr();
   if(action === 'in'){
-    let t = getToday();
-    if(!t){ t = {date:todayKey(), in:now, out:'', inType:'出社', outType:''}; records.unshift(t); }
-    else { t.in = now; t.inType = '出社'; }
+    let r = getToday();
+    if(!r){ r = {date:todayKey(), in:now, out:'', inType:wt, outType:''}; records.unshift(r); }
+    else { r.in = now; r.inType = wt; }
     save();
-    sendToSheet({name:userName, date:todayKey(), type:'出勤', time:now, workType:'出社', empType:workType});
+    sendToSheet({name:userName, date:todayKey(), type:'出勤', time:now, workType:wt, empType:workType});
     render();
-    qrShowDone('出勤を記録しました（' + now + '）');
+    qrShowDone('出勤を記録しました（' + now + '）／' + wt);
   } else {
-    let t = getToday();
-    if(!t){ t = {date:todayKey(), in:'', out:now, inType:'出社', outType:'出社'}; records.unshift(t); }
-    else { t.out = now; t.outType = '出社'; }
+    let r = getToday();
+    if(!r){ r = {date:todayKey(), in:'', out:now, inType:wt, outType:wt}; records.unshift(r); }
+    else { r.out = now; r.outType = wt; }
     save();
-    sendToSheet({name:userName, date:todayKey(), type:'退勤', time:now, workType:'出社', empType:workType});
+    sendToSheet({name:userName, date:todayKey(), type:'退勤', time:now, workType:wt, empType:workType});
     render();
-    qrShowDone('退勤を記録しました（' + now + '）');
+    qrShowDone('退勤を記録しました（' + now + '）／' + wt);
   }
+  qrPendingAction = null;
 }
 
 function qrShowDone(msg){
   document.getElementById('qrDoneMsg').textContent = msg;
   document.getElementById('qrBody').style.display = 'none';
+  document.getElementById('qrChoice').style.display = 'none';
   document.getElementById('qrDone').style.display = 'block';
 }
 
