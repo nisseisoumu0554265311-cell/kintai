@@ -529,7 +529,16 @@ async function sendToSheet(data){
       leave:data.leave||'',
       empType:workType  // flex or general
     });
-    await fetch(SHEET_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+    // 書き込みは応答(status:ok)が返るまで待つ。
+    // no-corsだとサーバーの書き込み＋シート再構築が終わる前にawaitが解決してしまい、
+    // 直後の同期が更新前のシートを読んで編集が元に戻る原因になっていた。
+    try {
+      const writeRes = await fetch(SHEET_URL+'?'+params.toString());
+      await writeRes.json(); // 応答受信＝doGet(書き込み)完了まで待機
+    } catch(_) {
+      // 応答が読めない環境向けのフォールバック（従来方式）
+      await fetch(SHEET_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+    }
     // 有給打刻時にスプレッドシートの有給残シートにも記録
     if(data.leave && data.leave !== '' && data.leave !== 'special'){
       const leaveParams=new URLSearchParams({
