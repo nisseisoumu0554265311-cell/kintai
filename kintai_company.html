@@ -661,10 +661,11 @@ let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or gene
 const WORK_TYPE_PASSWORD = '2022';
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
 const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180,'special':475};
-const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','1h':'時間休1h','2h':'時間休2h','3h':'時間休3h','special':'特別有給'};
+const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給'};
 
 // 編集機能
 let editIdx = null;
+let savePending = false; // 編集保存中フラグ（保存完了まで同期での上書きを防ぐ）
 
 function openAddRecord(){
   editIdx=-1;
@@ -705,7 +706,7 @@ function openEdit(idx){
 
 function closeEdit(){document.getElementById('editOverlay').classList.remove('open');editIdx=null;}
 
-function saveEdit(){
+async function saveEdit(){
   const inT=document.getElementById('editIn').value;
   const outT=document.getElementById('editOut').value;
   const leave=document.getElementById('editLeave').value;
@@ -723,9 +724,13 @@ function saveEdit(){
     records.push(newRec);
     records.sort((a,b)=>a.date<b.date?-1:1);
     save();render();closeEdit();
-    if(inT) sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
-    if(outT) sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
-    if(leave) sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave});
+    showToast('保存中…');
+    savePending=true;
+    try{
+      if(inT) await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
+      if(outT) await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
+      if(leave) await sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave});
+    } finally { savePending=false; }
     showToast('記録を追加しました ✓');
     return;
   }
@@ -739,9 +744,13 @@ function saveEdit(){
   if(outT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
   r.in=inT;r.out=outT;r.leave=leave;r.inType=wt;
   save();render();closeEdit();
-  if(inT!==originalIn) sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
-  if(outT&&outT!==originalOut) sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
-  if(leave!==originalLeave) sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
+  showToast('保存中…');
+  savePending=true;
+  try{
+    if(inT!==originalIn) await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
+    if(outT&&outT!==originalOut) await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
+    if(leave!==originalLeave) await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
+  } finally { savePending=false; }
   showToast('記録を更新しました ✓');
 }
 
@@ -975,6 +984,7 @@ function saveLeaveModal(){
 async function syncFromSheet(showMsg){
   if(!SHEET_URL || SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return;
   if(!userName) return;
+  if(savePending){ if(showMsg) showToast('保存処理中です。完了後に同期してください'); return; }
   try{
     const res = await fetch(SHEET_URL+'?type=getRecords&name='+encodeURIComponent(userName));
     const data = await res.json();
