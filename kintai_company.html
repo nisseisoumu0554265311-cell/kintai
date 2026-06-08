@@ -245,7 +245,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
         <option value="half_am">午前半休（4h）</option>
         <option value="half_pm">午後半休（4h）</option>
         <option value="1h">時間休1h</option>
-        <option value="2h">時間休2h</option>
+        <option value="2h_am">午前2h休</option>
+        <option value="2h_pm">午後2h休</option>
         <option value="3h">時間休3h</option>
         <option value="special">特別有給（特給）</option>
       </select>
@@ -647,8 +648,8 @@ function calcLeaveStats(pr){
     if(r.leave==='all') days+=1;
     else if(r.leave==='half'||r.leave==='half_am'||r.leave==='half_pm') days+=0.5;
     else if(r.leave==='1h') hours+=1;
-    else if(r.leave==='2h') hours+=2;
-    else if(r.leave==='3h') hours+=3;
+    else if(r.leave==='2h'||r.leave==='2h_am'||r.leave==='2h_pm') hours+=2;
+    else if(r.leave==='3h'||r.leave==='3h_am'||r.leave==='3h_pm') hours+=3;
   });
   return{days,hours};
 }
@@ -668,7 +669,7 @@ let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or gene
 const WORK_TYPE_PASSWORD = '2022';
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
 const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180,'special':475};
-const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給'};
+const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','2h_am':'午前2h休','2h_pm':'午後2h休','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給'};
 
 // 編集機能
 let editIdx = null;
@@ -799,8 +800,10 @@ function calcDay(r, wtype){
   let bMins=0;
   breaks.forEach(b=>{const os=Math.max(inM,b.s),oe=Math.min(outM,b.e);if(oe>os)bMins+=oe-os;});
 
-  // 有給分を加算（フレックスのみ）
-  const leaveMap={'all':475,'half_am':240,'half_pm':240,'1h':60,'2h':120,'3h_am':180,'3h_pm':180,'half':240,'1h':60,'2h':120,'3h':180};
+  // 有給分を加算（フレックスのみ）。各半休/時間休の「定時」に対する超過が残業。
+  // クレジット = 475 − その日の定時。half_am(定時245)→230 / half_pm(定時230)→245
+  // 2h_am(定時355)→120 / 2h_pm(定時365)→110 / 3h(定時305)→170 / 1h(定時415)→60
+  const leaveMap={'all':475,'half':240,'half_am':230,'half_pm':245,'1h':60,'2h':120,'2h_am':120,'2h_pm':110,'3h':170,'3h_am':170,'3h_pm':170,'special':0};
   const leaveMins=(r.leave&&leaveMap[r.leave])||0;
 
   if(type==='flex'){
