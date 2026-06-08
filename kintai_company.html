@@ -768,9 +768,26 @@ function cancelClockOut(){
   showToast('退勤打刻を取り消しました');
 }
 
-function deleteRecord(){
+async function deleteRecord(){
+  if(editIdx===null||editIdx<0) return;
   if(!confirm('この記録を削除しますか？'))return;
-  records.splice(editIdx,1);save();render();closeEdit();showToast('削除しました');
+  const r=records[editIdx];
+  const delDate=r.date;
+  // 先にローカルから消して画面に反映
+  records.splice(editIdx,1);save();render();closeEdit();
+  // サーバー（スプレッドシート）の行も消す
+  if(SHEET_URL && SHEET_URL!=='YOUR_GOOGLE_APPS_SCRIPT_URL' && userName){
+    showToast('削除中…');
+    savePending=true;
+    const delUrl=SHEET_URL+'?type=deleteRecord&name='+encodeURIComponent(userName)+'&date='+encodeURIComponent(delDate)+'&_='+Date.now();
+    try{
+      const res=await fetch(delUrl,{cache:'no-store'});
+      await res.text(); // 削除＋再構築の完了まで待機
+    }catch(e){
+      try{ await fetch(delUrl,{method:'GET',mode:'no-cors',cache:'no-store'}); }catch(_){}
+    }finally{ savePending=false; }
+  }
+  showToast('削除しました');
 }
 
 function calcDay(r, wtype){
