@@ -529,23 +529,13 @@ async function sendToSheet(data){
       leave:data.leave||'',
       empType:workType  // flex or general
     });
-    // 【診断モード】書き込み結果を画面に表示して原因を特定する
-    const writeUrl = SHEET_URL+'?'+params.toString();
+    // 書き込みは応答(status:ok)が返るまで待つ（再構築完了まで待機）。キャッシュ無効。
+    const writeUrl = SHEET_URL+'?'+params.toString()+'&_='+Date.now();
     try {
-      const writeRes = await fetch(writeUrl);
-      const txt = await writeRes.text();
-      let j = null; try { j = JSON.parse(txt); } catch(_) {}
-      if (j && j.status === 'ok') {
-        alert('診断: サーバーOK\n'+data.type+' / '+data.date+'\nleave='+(data.leave||'(なし)'));
-      } else if (j && j.status === 'error') {
-        alert('診断: サーバーがエラーを返しました\n'+(j.message||''));
-      } else {
-        alert('診断: 想定外の応答\n'+txt.slice(0,200));
-      }
-    } catch(err) {
-      alert('診断: 書き込み通信に失敗\n'+(err && err.message ? err.message : err));
-      // フォールバック（従来方式）
-      try { await fetch(writeUrl,{method:'GET',mode:'no-cors'}); } catch(_) {}
+      const writeRes = await fetch(writeUrl, {cache:'no-store'});
+      await writeRes.text();
+    } catch(_) {
+      try { await fetch(writeUrl,{method:'GET',mode:'no-cors',cache:'no-store'}); } catch(__) {}
     }
     // 有給打刻時にスプレッドシートの有給残シートにも記録
     if(data.leave && data.leave !== '' && data.leave !== 'special'){
@@ -555,7 +545,7 @@ async function sendToSheet(data){
         date:data.date,
         leave:data.leave
       });
-      const leaveRes = await fetch(SHEET_URL+'?'+leaveParams.toString());
+      const leaveRes = await fetch(SHEET_URL+'?'+leaveParams.toString()+'&_='+Date.now(), {cache:'no-store'});
       const leaveData = await leaveRes.json();
       if(leaveData.status==='ok' && leaveData.leave){
         leaveBalance = leaveData.leave.days;
@@ -1003,7 +993,7 @@ async function syncFromSheet(showMsg){
   if(!userName) return;
   if(savePending){ if(showMsg) showToast('保存処理中です。完了後に同期してください'); return; }
   try{
-    const res = await fetch(SHEET_URL+'?type=getRecords&name='+encodeURIComponent(userName));
+    const res = await fetch(SHEET_URL+'?type=getRecords&name='+encodeURIComponent(userName)+'&_='+Date.now(), {cache:'no-store'});
     const data = await res.json();
     if(data && data.status==='ok' && Array.isArray(data.records)){
       records = data.records.map(function(r){
@@ -1200,7 +1190,7 @@ setTimeout(loadNotices, 1000);
 function reloadLeaveBalance(){
   if(!userName){showToast('先に氏名を設定してください');return;}
   showToast('有給残を取得中…');
-  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName))
+  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName)+'&_='+Date.now(), {cache:'no-store'})
     .then(r=>r.json())
     .then(data=>{
       if(data.status==='ok' && data.leave){
@@ -1222,7 +1212,7 @@ function reloadLeaveBalance(){
 function loadLeaveBalance(){
   if(!userName) return;
   if(leaveBalance >= 0 && leaveInitDays >= 0) return; // 残・年初とも取得済みならスキップ
-  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName))
+  fetch(SHEET_URL+'?type=getLeave&name='+encodeURIComponent(userName)+'&_='+Date.now(), {cache:'no-store'})
     .then(r=>r.json())
     .then(data=>{
       if(data.status==='ok' && data.leave){
