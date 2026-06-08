@@ -529,15 +529,23 @@ async function sendToSheet(data){
       leave:data.leave||'',
       empType:workType  // flex or general
     });
-    // 書き込みは応答(status:ok)が返るまで待つ。
-    // no-corsだとサーバーの書き込み＋シート再構築が終わる前にawaitが解決してしまい、
-    // 直後の同期が更新前のシートを読んで編集が元に戻る原因になっていた。
+    // 【診断モード】書き込み結果を画面に表示して原因を特定する
+    const writeUrl = SHEET_URL+'?'+params.toString();
     try {
-      const writeRes = await fetch(SHEET_URL+'?'+params.toString());
-      await writeRes.json(); // 応答受信＝doGet(書き込み)完了まで待機
-    } catch(_) {
-      // 応答が読めない環境向けのフォールバック（従来方式）
-      await fetch(SHEET_URL+'?'+params.toString(),{method:'GET',mode:'no-cors'});
+      const writeRes = await fetch(writeUrl);
+      const txt = await writeRes.text();
+      let j = null; try { j = JSON.parse(txt); } catch(_) {}
+      if (j && j.status === 'ok') {
+        alert('診断: サーバーOK\n'+data.type+' / '+data.date+'\nleave='+(data.leave||'(なし)'));
+      } else if (j && j.status === 'error') {
+        alert('診断: サーバーがエラーを返しました\n'+(j.message||''));
+      } else {
+        alert('診断: 想定外の応答\n'+txt.slice(0,200));
+      }
+    } catch(err) {
+      alert('診断: 書き込み通信に失敗\n'+(err && err.message ? err.message : err));
+      // フォールバック（従来方式）
+      try { await fetch(writeUrl,{method:'GET',mode:'no-cors'}); } catch(_) {}
     }
     // 有給打刻時にスプレッドシートの有給残シートにも記録
     if(data.leave && data.leave !== '' && data.leave !== 'special'){
