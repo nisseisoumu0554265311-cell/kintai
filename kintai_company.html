@@ -189,7 +189,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <button onclick="syncFromSheet(true)" style="font-size:12px;background:none;color:#007AFF;border:none;cursor:pointer;font-weight:500;">🔄 同期</button>
   </div>
   <div id="historyList"></div>
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.0.0　2026-05-11</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.1.0　2026-06-14</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -387,6 +387,13 @@ let isSending = false; // 二重送信防止
 
 function pad(n){return String(n).padStart(2,'0');}
 function todayKey(){const n=new Date();return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;}
+const EDIT_LIMIT_DAYS=7;
+function isEditable(dateStr){
+  if(!dateStr) return true;
+  const rec=new Date(dateStr+'T00:00:00'), today=new Date(todayKey()+'T00:00:00');
+  const diff=Math.floor((today-rec)/86400000);
+  return diff<=EDIT_LIMIT_DAYS;   // 記録日から7日以内なら編集可
+}
 function nowTimeStr(){const n=new Date();return `${pad(n.getHours())}:${pad(n.getMinutes())}`;}
 function toMins(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
 function hm(mins){const sign=mins<0?'-':'';const a=Math.abs(Math.round(mins));return `${sign}${Math.floor(a/60)}h${pad(a%60)}m`;}
@@ -697,8 +704,12 @@ function openAddRecord(){
 function overlayTap(e){if(e.target===document.getElementById('editOverlay'))closeEdit();}
 
 function openEdit(idx){
-  editIdx=idx;
   const r=records[idx];
+  if(r && !isEditable(r.date)){
+    showToast('編集期限（記録日から'+EDIT_LIMIT_DAYS+'日）を過ぎています。変更の場合は総務へご連絡ください');
+    return;
+  }
+  editIdx=idx;
   document.getElementById('editTitle').textContent=r.date+' の記録を編集';
   document.getElementById('editDate').value=r.date;
   document.getElementById('editDate').readOnly=true;
@@ -921,7 +932,7 @@ function render(){
           <span style="font-size:13px;color:#1C1C1E;"><span style="color:#34C759;">●</span>${r.in||'--'}&nbsp;<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
         </div>
         <div style="font-size:11px;color:#8E8E93;margin-top:3px;display:flex;justify-content:space-between;">
-          <span>${typeIcon}実労働 ${ws}</span>${leaveStr||otStr}
+          <span>${typeIcon}実労働 ${ws}</span><span>${otStr}${otStr&&leaveStr?'&nbsp;':''}${leaveStr}</span>
         </div>
       </div>`;
     });
