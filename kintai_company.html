@@ -1237,6 +1237,11 @@ updateClock();
 
 // お知らせ取得・表示
 let noticeData = [];
+// お知らせ文中のURLをタップできるリンクに変換（HTMLはエスケープ）
+function linkifyNotice(text){
+  const esc = String(text==null?'':text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#007AFF;text-decoration:underline;word-break:break-all;">$1</a>');
+}
 function closeNotice(){
   document.getElementById('noticeOverlay').classList.remove('open');
 }
@@ -1246,7 +1251,7 @@ function openNotice(){
   list.innerHTML=noticeData.map(n=>`
     <div style="background:#F2F2F7;border-radius:12px;padding:12px 14px;margin-bottom:8px;">
       <div style="font-size:11px;color:#8E8E93;margin-bottom:4px;">${n.date}</div>
-      <div style="font-size:15px;color:#1C1C1E;line-height:1.5;">${n.message}</div>
+      <div style="font-size:15px;color:#1C1C1E;line-height:1.5;">${linkifyNotice(n.message)}</div>
     </div>
   `).join('');
   document.getElementById('noticeOverlay').classList.add('open');
