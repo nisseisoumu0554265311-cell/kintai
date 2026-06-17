@@ -110,16 +110,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
   </div>
   <!-- 設定メニュー（折りたたみ） -->
   <div id="settingMenu" style="display:none;background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:.9rem;">
-    <div style="display:flex;gap:8px;justify-content:center;">
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
       <button class="btn-change" onclick="openNameModal();event.stopPropagation()">名前変更</button>
-      <button class="btn-change" onclick="openLeaveModal();event.stopPropagation()" style="color:#FF9500;">有給設定</button>
-      <button class="btn-change" onclick="openWorkTypeModal();event.stopPropagation()" style="color:#5856D6;">勤務設定</button>
+      <button class="btn-change admin-only" onclick="openLeaveModal();event.stopPropagation()" style="color:#FF9500;">有給設定</button>
+      <button class="btn-change admin-only" onclick="openWorkTypeModal();event.stopPropagation()" style="color:#5856D6;">勤務設定</button>
     </div>
     <div style="margin-top:8px;border-top:1px solid #F2F2F7;padding-top:8px;">
-     <div style="display:flex;gap:8px;">
-  <button class="btn-change" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;flex:1;">📅 月次締め</button>
-  <button class="btn-change" onclick="reloadLeaveBalance();event.stopPropagation()" style="color:#34C759;flex:1;">🔄 有給残再取得</button>
-</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-change admin-only" onclick="openMonthlyCloseModal();event.stopPropagation()" style="color:#FF3B30;flex:1;">📅 月次締め</button>
+        <button class="btn-change" onclick="reloadLeaveBalance();event.stopPropagation()" style="color:#34C759;flex:1;">🔄 有給残再取得</button>
+      </div>
+      <div class="admin-only" style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-change" onclick="adminRefreshSummary();event.stopPropagation()" style="color:#007AFF;flex:1;">📊 集計を更新</button>
+      </div>
+      <div style="margin-top:8px;border-top:1px solid #F2F2F7;padding-top:8px;text-align:center;">
+        <button id="adminToggleBtn" class="btn-change" onclick="toggleAdminMode();event.stopPropagation()" style="color:#8E8E93;">🔑 総務モード</button>
+      </div>
     </div>
   </div>
 
@@ -189,7 +195,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <button onclick="syncFromSheet(true)" style="font-size:12px;background:none;color:#007AFF;border:none;cursor:pointer;font-weight:500;">🔄 同期</button>
   </div>
   <div id="historyList"></div>
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.1.0　2026-06-14</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.2.0　2026-06-15</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -237,7 +243,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
       <label style="font-size:15px;color:#1C1C1E;">退勤時刻</label>
       <input type="time" id="editOut" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
     </div>
-    <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+    <div id="editLeaveRow" style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">有給</label>
       <select id="editLeave" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
         <option value="">なし</option>
@@ -505,7 +511,7 @@ function saveName(){
   showToast(`氏名を「${v}」に設定しました`);
   // 初回のみ：勤務タイプを選んでもらう（打刻前に確定させる）
   if(wasEmpty && !localStorage.getItem('kintai_work_type_set')){
-    openInitialWorkType();
+    localStorage.setItem('kintai_work_type_set','1'); // 勤務タイプは総務が設定（既定フレックス）
   }
   tryStartQr();
   syncFromSheet();
@@ -674,6 +680,46 @@ function saveLeave(){
 }
 let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or general
 const WORK_TYPE_PASSWORD = '2022';
+const ADMIN_PASSWORD = '5311';
+let adminMode = localStorage.getItem('kintai_admin')==='1';
+function enterAdminMode(){
+  const pw = prompt('総務モードのパスワードを入力してください');
+  if(pw===null) return;
+  if(pw!==ADMIN_PASSWORD){ showToast('パスワードが違います'); return; }
+  adminMode = true;
+  localStorage.setItem('kintai_admin','1');
+  applyAdminUI();
+  showToast('総務モードをONにしました 🔑');
+}
+function exitAdminMode(){
+  adminMode = false;
+  localStorage.removeItem('kintai_admin');
+  applyAdminUI();
+  showToast('総務モードを終了しました');
+}
+function toggleAdminMode(){ if(adminMode) exitAdminMode(); else enterAdminMode(); }
+function applyAdminUI(){
+  document.querySelectorAll('.admin-only').forEach(function(el){
+    el.style.display = adminMode ? '' : 'none';
+  });
+  const tb = document.getElementById('adminToggleBtn');
+  if(tb){
+    tb.textContent = adminMode ? '総務モード ON（終了）' : '🔑 総務モード';
+    tb.style.color = adminMode ? '#FF3B30' : '#8E8E93';
+  }
+}
+// 月次集計の手動更新（総務モード専用・サーバーでもpw確認）
+async function adminRefreshSummary(){
+  if(!adminMode) return;
+  if(!SHEET_URL || SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return;
+  showToast('集計を更新中…');
+  try{
+    const res = await fetch(SHEET_URL+'?type=adminRefresh&pw='+encodeURIComponent(ADMIN_PASSWORD)+'&_='+Date.now(), {cache:'no-store'});
+    const data = await res.json();
+    if(data && data.status==='ok') showToast('月次集計を更新しました ✓');
+    else showToast((data&&data.message) || '更新できませんでした');
+  }catch(e){ showToast('更新できませんでした（通信エラー）'); }
+}
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
 const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180,'special':475};
 const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','2h_am':'午前2h休','2h_pm':'午後2h休','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給'};
@@ -717,8 +763,8 @@ function openEdit(idx){
   document.getElementById('editIn').value=r.in||'';
   document.getElementById('editOut').value=r.out||'';
   document.getElementById('editLeave').value=r.leave||'';
-  document.getElementById('editLeave').value=r.leave||'';
-  document.getElementById('btnDel').style.display='block';
+  document.getElementById('editLeaveRow').style.display=adminMode?'flex':'none';
+  document.getElementById('btnDel').style.display=adminMode?'block':'none';
   document.getElementById('btnCancelOut').style.display=r.out?'block':'none';
   document.getElementById('editOverlay').classList.add('open');
 }
@@ -966,8 +1012,18 @@ function toggleSettingMenu(){
 
 function openWorkTypeModal(){
   document.getElementById('workTypePassword').value='';
-  document.getElementById('workTypeStep1').style.display='block';
-  document.getElementById('workTypeStep2').style.display='none';
+  if(adminMode){
+    document.getElementById('workTypeStep1').style.display='none';
+    document.getElementById('workTypeStep2').style.display='block';
+    document.getElementById('btnFlex').style.background=workType==='flex'?'#5856D6':'none';
+    document.getElementById('btnFlex').style.color=workType==='flex'?'#fff':'#5856D6';
+    document.getElementById('btnGeneral').style.background=workType==='general'?'#5856D6':'none';
+    document.getElementById('btnGeneral').style.color=workType==='general'?'#fff':'#1C1C1E';
+    document.getElementById('btnGeneral').style.borderColor=workType==='general'?'#5856D6':'#E5E5EA';
+  } else {
+    document.getElementById('workTypeStep1').style.display='block';
+    document.getElementById('workTypeStep2').style.display='none';
+  }
   document.getElementById('workTypeModal').classList.add('open');
 }
 function closeWorkTypeModal(e){
@@ -1167,9 +1223,10 @@ function closeQr(){
 
 // 初期化
 if(!userName) openNameModal();
-else if(!localStorage.getItem('kintai_work_type_set')) openInitialWorkType();
+else if(!localStorage.getItem('kintai_work_type_set')) localStorage.setItem('kintai_work_type_set','1');
 tryStartQr();
 render();
+applyAdminUI();
 syncFromSheet();
 checkGPS();
 // 5分ごとにGPS更新
