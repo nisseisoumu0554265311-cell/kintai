@@ -138,10 +138,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <!-- 今日のステータス -->
-  <div class="status-card">
-    <div class="status-label">今日のステータス</div>
-    <div class="status-value" id="statusText">未打刻</div>
+  <!-- 今日のステータス・詳細（普段は非表示・タップで開閉） -->
+  <button id="detailToggle" onclick="toggleDetail()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:.65rem 1rem;margin-bottom:.9rem;cursor:pointer;font-size:13px;color:#8E8E93;display:flex;justify-content:space-between;align-items:center;">
+    <span>今日のステータス・詳細</span>
+    <span id="detailArrow">▾</span>
+  </button>
+  <div id="detailPanel" style="display:none;">
+    <div class="status-card" id="statusCard">
+      <div class="status-label">今日のステータス</div>
+      <div class="status-value" id="statusText">未打刻</div>
+    </div>
+    <div class="info-box" id="infoBox">
+      休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
+      <span id="infoOT"></span>　／　締め：毎月21日〜翌20日<br>
+      📍 会社から100m以内で出社打刻、範囲外はテレワーク
+    </div>
   </div>
 
   <!-- 今日の打刻を修正 -->
@@ -182,12 +193,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
         時間休：<span id="leaveHours" style="color:#FF3B30;font-weight:500;">0h</span>
       </div>
     </div>
-  </div>
-
-  <div class="info-box" id="infoBox">
-    休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
-    <span id="infoOT"></span>　／　締め：毎月21日〜翌20日<br>
-    📍 会社から100m以内で出社打刻、範囲外はテレワーク
   </div>
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -1221,12 +1226,27 @@ function closeQr(){
   try { if(history.replaceState) history.replaceState(null, '', location.origin + location.pathname); } catch(e){}
 }
 
+function toggleDetail(){
+  const p=document.getElementById('detailPanel');
+  const show = (p.style.display==='none');
+  p.style.display = show ? 'block' : 'none';
+  document.getElementById('detailArrow').textContent = show ? '▴' : '▾';
+  localStorage.setItem('kintai_detail_open', show ? '1' : '0');
+}
+function restoreDetailState(){
+  if(localStorage.getItem('kintai_detail_open')==='1'){
+    const p=document.getElementById('detailPanel');
+    if(p){ p.style.display='block'; document.getElementById('detailArrow').textContent='▴'; }
+  }
+}
+
 // 初期化
 if(!userName) openNameModal();
 else if(!localStorage.getItem('kintai_work_type_set')) localStorage.setItem('kintai_work_type_set','1');
 tryStartQr();
 render();
 applyAdminUI();
+restoreDetailState();
 syncFromSheet();
 checkGPS();
 // 5分ごとにGPS更新
