@@ -208,7 +208,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <button onclick="openAddRecord()" style="font-size:12px;background:#34C759;color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-weight:500;">＋ 後日追加</button>
   </div>
   <div id="histCurrentMonth"></div>
-  <div style="font-size:13px;font-weight:500;color:#8E8E93;margin-bottom:8px;padding:0 2px;margin-top:1rem;">過去の実績</div>
   <div id="histPeriods"></div>
 </div>
 </div>
@@ -1453,52 +1452,9 @@ function renderHistory(){
     }
   }
 
-  // 過去の実績
+  // 過去の実績は表示しない（過去はアーカイブのスプレッドシートで確認）
   const container=document.getElementById('histPeriods');
-  container.innerHTML='';
-  pastPeriods.forEach((period,pi)=>{
-    const pr=records.filter(r=>inPeriod(r.date,period));
-    let tw=0,tot=0;
-    pr.forEach(r=>{const c=calcDay(r);if(c){tw+=c.totalMins;tot+=c.otMins;}});
-    const ls=calcLeaveStats(pr);
-    const otColor=tot>0?'#FF3B30':tot<0?'#34C759':'#8E8E93';
-    const label=`${period.start.slice(0,7).replace('-','/')}（${period.start.slice(5).replace('-','/')}〜${period.end.slice(5).replace('-','/')}）`;
-    const leaveStr=ls.days>0||ls.hours>0?`有給 ${ls.days>0?ls.days+'日':''}${ls.hours>0?' '+ls.hours+'h':''}`.trim():'';
-    const div=document.createElement('div');
-    div.style.cssText='background:#fff;border-radius:14px;padding:.85rem 1rem;margin-bottom:8px;cursor:pointer;';
-    div.innerHTML=`
-      <div class="hp-top" style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:14px;font-weight:500;color:#1C1C1E;">${label}</div>
-        <div style="font-size:15px;font-weight:500;color:${otColor};">${hm(tot)}</div>
-      </div>
-      <div style="font-size:11px;color:#8E8E93;margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;">
-        <span>出勤 ${pr.filter(r=>r.in).length}日</span>
-        <span>実労働 ${hm(tw)}</span>
-        <span>時間外 ${hm(tot)}</span>
-        ${leaveStr?`<span style="color:#FF9500;">${leaveStr}</span>`:''}
-      </div>
-      <div id="histDet-${pi}" style="display:none;margin-top:.75rem;border-top:0.5px solid #E5E5EA;padding-top:.75rem;">
-        ${pr.length===0?'<div style="font-size:12px;color:#8E8E93;padding:6px 0;">記録なし</div>':
-          pr.map(r=>{
-            const idx=records.indexOf(r);
-            const c=calcDay(r);
-            const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
-            const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
-            const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
-            return `<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:6px 0;border-bottom:0.5px solid #F2F2F7;cursor:pointer;" onclick="openEdit(${idx})">
-              <span style="color:#8E8E93;width:55px;">${r.date.slice(5).replace('-','/')}</span>
-              <span style="flex:1;text-align:center;color:#1C1C1E;">${typeIcon} ${r.in||'--'}→${r.out||'--'} ${c?hm(c.totalMins):'--'}</span>
-              <span style="width:55px;text-align:center;">${leaveTag}</span>
-              <span style="width:50px;text-align:right;color:${otC};">${c?hm(c.otMins):''}</span>
-            </div>`;
-          }).join('')}
-      </div>`;
-    div.querySelector('.hp-top').addEventListener('click',()=>{
-      const det=document.getElementById(`histDet-${pi}`);
-      det.style.display=det.style.display==='none'?'block':'none';
-    });
-    container.appendChild(div);
-  });
+  if(container) container.innerHTML='';
 }
 </script>
 </body>
