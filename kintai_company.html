@@ -809,6 +809,7 @@ async function saveEdit(){
   const originalIn=r.in||'';
   const originalOut=r.out||'';
   const originalLeave=r.leave||'';
+  const originalType=r.inType||'';
   if(!inT){showToast('出勤時刻は必須です');return;}
   if(outT&&inT>=outT){showToast('退勤は出勤より後にしてください');return;}
   r.in=inT;r.out=outT;r.leave=leave;r.inType=wt;
@@ -816,7 +817,7 @@ async function saveEdit(){
   showToast('保存中…');
   savePending=true;
   try{
-    if(inT!==originalIn) await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
+    if(inT!==originalIn || wt!==originalType) await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
     if(outT&&outT!==originalOut) await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
     if(leave!==originalLeave) await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
   } finally { savePending=false; }
@@ -972,7 +973,7 @@ function render(){
       const idx=records.indexOf(r);
       const c=calcDay(r);
       const ws=c?hm(c.totalMins):(r.out?'--':'退勤未打刻');
-      const typeIcon=r.type==='テレワーク'?'🏠 ':r.type==='出張等'?'🚗 ':'';
+      const typeIcon=r.inType==='テレワーク'?'🏠 ':r.inType==='出張等'?'🚗 ':'';
       const otStr=c&&c.otMins!==0?`<span style="color:${c.otMins>0?'#FF3B30':'#34C759'};font-size:11px;">${hm(c.otMins)}</span>`:'';
       const leaveStr=r.leave?`<span style="color:#FF9500;font-size:11px;">🟡 ${LEAVE_LABEL[r.leave]}</span>`:'';
       const borderLeft=r.leave?'border-left:3px solid #FF9500;':'';
