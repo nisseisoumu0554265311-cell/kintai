@@ -1088,7 +1088,9 @@ async function syncFromSheet(showMsg){
     const res = await fetch(SHEET_URL+'?type=getRecords&name='+encodeURIComponent(userName)+'&_='+Date.now(), {cache:'no-store'});
     const data = await res.json();
     if(data && data.status==='ok' && Array.isArray(data.records)){
-      records = data.records.map(function(r){
+      const cur = getCurrentPeriod();
+      const prevStart = getPastPeriods(1)[0].start;
+      const serverRecords = data.records.map(function(r){
         return {
           date: r.date,
           in: r.in || '',
@@ -1098,6 +1100,11 @@ async function syncFromSheet(showMsg){
           leave: r.leave || ''
         };
       });
+      // 先月分はスマホ内のローカルを保持（サーバーは当期間のみ持つ）。先々月以前は破棄。
+      const byDate = {};
+      records.forEach(function(r){ if(r.date >= prevStart && r.date < cur.start) byDate[r.date]=r; });
+      serverRecords.forEach(function(r){ byDate[r.date]=r; }); // 当期間はサーバー優先
+      records = Object.keys(byDate).map(function(k){ return byDate[k]; }).filter(function(r){ return r.date >= prevStart; });
       records.sort(function(a,b){ return a.date < b.date ? -1 : 1; });
       save();
       render();
@@ -1239,10 +1246,18 @@ function restoreDetailState(){
     if(p){ p.style.display='block'; document.getElementById('detailArrow').textContent='▴'; }
   }
 }
+// 先々月以前の記録を自動削除（今月＋先月のみ保持）
+function pruneOldRecords(){
+  const prevStart = getPastPeriods(1)[0].start;
+  const before = records.length;
+  records = records.filter(function(r){ return r.date >= prevStart; });
+  if(records.length !== before) save();
+}
 
 // 初期化
 if(!userName) openNameModal();
 else if(!localStorage.getItem('kintai_work_type_set')) localStorage.setItem('kintai_work_type_set','1');
+pruneOldRecords();
 tryStartQr();
 render();
 applyAdminUI();
@@ -1453,9 +1468,37 @@ function renderHistory(){
     }
   }
 
-  // 過去の実績は表示しない（過去はアーカイブのスプレッドシートで確認）
+  // 先月の実績（スマホ内に保持・先々月以前は自動削除）
   const container=document.getElementById('histPeriods');
-  if(container) container.innerHTML='';
+  if(container){
+    container.innerHTML='';
+    const prevPeriod=getPastPeriods(1)[0];
+    const pr=records.filter(r=>inPeriod(r.date,prevPeriod)).sort((a,b)=>a.date<b.date?1:-1);
+    if(pr.length>0){
+      const head=document.createElement('div');
+      head.style.cssText='font-size:13px;font-weight:500;color:#8E8E93;margin:1.3rem 0 8px;padding:0 2px;';
+      head.textContent=`先月の実績（${prevPeriod.start.slice(5).replace('-','/')}〜${prevPeriod.end.slice(5).replace('-','/')}）`;
+      container.appendChild(head);
+      pr.forEach(r=>{
+        const c=calcDay(r);
+        const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
+        const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
+        const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
+        const d=document.createElement('div');
+        d.style.cssText='background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;opacity:0.82;';
+        d.innerHTML=`
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#8E8E93;font-size:13px;">${r.date.slice(5).replace('-','/')} ${typeIcon}</span>
+            <span style="font-size:13px;color:#1C1C1E;">${r.in||'--'}〜${r.out||'--'} ${leaveTag}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E8E93;margin-top:3px;">
+            <span>実労働 ${c?hm(c.totalMins):'--'}</span>
+            <span style="color:${otC};">時間外 ${c?hm(c.otMins):'--'}</span>
+          </div>`;
+        container.appendChild(d);
+      });
+    }
+  }
 }
 </script>
 </body>
