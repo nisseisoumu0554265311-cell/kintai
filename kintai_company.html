@@ -818,16 +818,22 @@ async function saveEdit(){
   savePending=true;
   try{
     if(inT!==originalIn || wt!==originalType) await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
-    if(outT&&outT!==originalOut) await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
+    if(outT!==originalOut) await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
     if(leave!==originalLeave) await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
   } finally { savePending=false; }
   showToast('記録を更新しました ✓');
 }
 
-function cancelClockOut(){
+async function cancelClockOut(){
   if(!confirm('退勤打刻を取り消しますか？'))return;
   const r=records[editIdx];
+  const delDate=r.date;
   r.out='';save();render();closeEdit();
+  showToast('取り消し中…');
+  savePending=true;
+  try{
+    await sendToSheet({name:userName,date:delDate,type:'退勤',time:'',workType:r.inType||'',empType:workType,leave:''});
+  } finally { savePending=false; }
   showToast('退勤打刻を取り消しました');
 }
 
