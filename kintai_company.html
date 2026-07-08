@@ -600,55 +600,86 @@ async function sendToSheet(data){
   }
 }
 
-function clockIn(){
+async function clockIn(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
-  isSending=true;setTimeout(()=>isSending=false,3000);
+  const btn=document.getElementById('btnIn');
+  const originalText=btn.textContent;
+  isSending=true;
+  btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
+  let ok=false;
+  try{
+    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社',empType:workType});
+  } finally { isSending=false; }
+  btn.textContent=originalText;
+  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社',empType:workType});
   render();showToast('出勤打刻しました ✓');
 }
-function clockOut(){
+async function clockOut(){
   if(isSending){showToast('送信中です…');return;}
   const t=getToday();
   if(!t||t.out){showToast('先に出勤打刻してください');return;}
-  isSending=true;setTimeout(()=>isSending=false,3000);
+  const btn=document.getElementById('btnOut');
+  const originalText=btn.textContent;
+  isSending=true;
+  btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
+  const outType=gpsStatus==='inside'?'出社':'出張等';
+  const combinedType=t.inType===outType?t.inType:'複合('+t.inType+'→'+outType+')';
+  let ok=false;
+  try{
+    ok=await sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType});
+  } finally { isSending=false; }
+  btn.textContent=originalText;
+  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   t.out=now;
-  // GPS状態で退勤時の勤務区分を判定
-  t.outType=gpsStatus==='inside'?'出社':'出張等';
-  const combinedType=t.inType===t.outType?t.inType:'複合('+t.inType+'→'+t.outType+')';
+  t.outType=outType;
   save();
-  const c2=calcDay(t);
-  sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType});
   render();
   const c=calcDay(t);
   showToast(`退勤打刻しました${c?' 実労働時間'+hm(c.totalMins):''} ✓`);
 }
 
-function clockBiz(){
+async function clockBiz(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
-  isSending=true;setTimeout(()=>isSending=false,3000);
+  const btn=document.getElementById('btnBiz');
+  const originalText=btn.textContent;
+  isSending=true;
+  btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
+  let ok=false;
+  try{
+    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等',empType:workType});
+  } finally { isSending=false; }
+  btn.textContent=originalText;
+  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   records.unshift({date:todayKey(),in:now,out:'',inType:'出張等',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等',empType:workType});
   render();showToast('🚗 出張等で出勤しました ✓');
 }
-function clockTelework(){
+async function clockTelework(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
   if(getToday()){showToast('本日はすでに出勤済みです');return;}
-  isSending=true;setTimeout(()=>isSending=false,3000);
+  const btn=document.getElementById('btnTelework');
+  const originalText=btn.textContent;
+  isSending=true;
+  btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
+  let ok=false;
+  try{
+    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク',empType:workType});
+  } finally { isSending=false; }
+  btn.textContent=originalText;
+  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   records.unshift({date:todayKey(),in:now,out:'',inType:'テレワーク',outType:''});
   save();
-  sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク',empType:workType});
   render();showToast('🏠 テレワーク出勤しました ✓');
 }
 
