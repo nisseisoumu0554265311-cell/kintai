@@ -100,13 +100,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <!-- 名前表示（タップで設定メニュー） -->
-  <div class="name-card" oncontextmenu="toggleSettingMenu();return false;" ontouchstart="startLongPress(event)" ontouchend="cancelLongPress()" ontouchmove="cancelLongPress()" onmousedown="startLongPress(event)" onmouseup="cancelLongPress()" onmouseleave="cancelLongPress()" style="cursor:pointer;-webkit-user-select:none;user-select:none;">
+  <!-- 名前表示（右端のアイコンをタップで設定メニュー） -->
+  <div class="name-card" style="-webkit-user-select:none;user-select:none;">
     <div style="flex:1;">
       <div class="name-value" id="nameDisplay" style="font-size:20px;font-weight:600;">--</div>
-      <div style="font-size:11px;color:#8E8E93;margin-top:2px;"><span id="btnWorkType">フレックス</span>　設定は長押し</div>
+      <div style="font-size:11px;color:#8E8E93;margin-top:2px;"><span id="btnWorkType">フレックス</span></div>
     </div>
-    <div style="color:#8E8E93;font-size:18px;" id="settingArrow">▶</div>
+    <button onclick="toggleSettingMenu()" aria-label="設定メニューを開く" style="background:#F2F2F7;border:none;border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:#8E8E93;font-size:16px;cursor:pointer;flex-shrink:0;" id="settingArrow">▶</button>
   </div>
   <!-- 設定メニュー（折りたたみ） -->
   <div id="settingMenu" style="display:none;background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:.9rem;">
@@ -129,34 +129,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <!-- GPS状態 -->
-  <div class="gps-card">
-    <div class="gps-dot checking" id="gpsDot"></div>
-    <div>
-      <div class="gps-text" id="gpsText">位置情報を確認中...</div>
-      <div class="gps-sub" id="gpsSub">しばらくお待ちください</div>
+  <!-- 今日の勤務 -->
+  <div id="todayWorkCard" style="background:#EAF2FF;border-radius:14px;padding:.9rem 1.1rem;margin-bottom:.9rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:12px;color:#007AFF;" id="todayWorkDate">今日の勤務</span>
+      <span style="font-size:12px;color:#007AFF;font-weight:500;" id="todayWorkType"></span>
     </div>
+    <div id="todayWorkTimes" style="font-size:24px;font-weight:500;color:#007AFF;">--</div>
   </div>
 
-  <!-- 今日のステータス・詳細（普段は非表示・タップで開閉） -->
-  <button id="detailToggle" onclick="toggleDetail()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:.65rem 1rem;margin-bottom:.9rem;cursor:pointer;font-size:13px;color:#8E8E93;display:flex;justify-content:space-between;align-items:center;">
-    <span>今日のステータス・詳細</span>
-    <span id="detailArrow">▾</span>
-  </button>
-  <div id="detailPanel" style="display:none;">
-    <div class="status-card" id="statusCard">
-      <div class="status-label">今日のステータス</div>
-      <div class="status-value" id="statusText">未打刻</div>
-    </div>
-    <div class="info-box" id="infoBox">
-      休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
-      <span id="infoOT"></span>　／　締め：毎月21日〜翌20日<br>
-      📍 会社から100m以内で出社打刻、範囲外はテレワーク
-    </div>
-  </div>
-
-  <!-- 今日の打刻を修正 -->
-<!-- 出勤・退勤ボタン -->
+  <!-- 出勤・退勤ボタン -->
   <div class="btn-row">
     <button class="btn-in" id="btnIn" onclick="clockIn()" disabled>出勤</button>
     <button class="btn-out" id="btnOut" onclick="clockOut()" disabled>退勤</button>
@@ -172,25 +154,37 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </button>
   </div>
 
-  <!-- 時間外バナー -->
-  <!-- 有給状況カード -->
-
-
-  <div class="stats">
-    <div class="stat"><div class="stat-label">今月の出勤日数</div><div class="stat-val" id="periodDays">0日</div></div>
-    <div class="stat"><div class="stat-label">今月の総実労働時間</div><div class="stat-val" id="monthH">0h</div></div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.9rem;">
-    <div class="stat">
-      <div class="stat-label">今月の時間外</div>
-      <div class="stat-val" id="monthOT">0h</div>
+  <!-- 詳細情報（GPS・今月の集計）：普段は折りたたみ -->
+  <button id="infoToggle" onclick="toggleInfo()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:.65rem 1rem;margin-bottom:.9rem;cursor:pointer;font-size:13px;color:#8E8E93;display:flex;justify-content:space-between;align-items:center;">
+    <span>詳細情報（GPS・今月の集計）</span>
+    <span id="infoArrow">▾</span>
+  </button>
+  <div id="infoPanel" style="display:none;">
+    <!-- GPS状態 -->
+    <div class="gps-card">
+      <div class="gps-dot checking" id="gpsDot"></div>
+      <div>
+        <div class="gps-text" id="gpsText">位置情報を確認中...</div>
+        <div class="gps-sub" id="gpsSub">しばらくお待ちください</div>
+      </div>
     </div>
-    <div class="stat">
-      <div class="stat-label">有給</div>
-      <div style="font-size:12px;color:#8E8E93;margin-top:4px;">
-        残：<span id="leaveRemain" style="color:#1C1C1E;font-weight:500;">--日</span><br>
-        消化：<span id="leaveUsed" style="color:#FF3B30;font-weight:500;">0日</span>　
-        時間休：<span id="leaveHours" style="color:#FF3B30;font-weight:500;">0h</span>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">今月の出勤日数</div><div class="stat-val" id="periodDays">0日</div></div>
+      <div class="stat"><div class="stat-label">今月の総実労働時間</div><div class="stat-val" id="monthH">0h</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:.9rem;">
+      <div class="stat">
+        <div class="stat-label">今月の時間外</div>
+        <div class="stat-val" id="monthOT">0h</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">有給</div>
+        <div style="font-size:12px;color:#8E8E93;margin-top:4px;">
+          残：<span id="leaveRemain" style="color:#1C1C1E;font-weight:500;">--日</span><br>
+          消化：<span id="leaveUsed" style="color:#FF3B30;font-weight:500;">0日</span>　
+          時間休：<span id="leaveHours" style="color:#FF3B30;font-weight:500;">0h</span>
+        </div>
       </div>
     </div>
   </div>
@@ -200,7 +194,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <button onclick="syncFromSheet(true)" style="font-size:12px;background:none;color:#007AFF;border:none;cursor:pointer;font-weight:500;">🔄 同期</button>
   </div>
   <div id="historyList"></div>
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.2.0　2026-06-15</div>
+
+  <!-- 今日のステータス・詳細（普段は非表示・タップで開閉） -->
+  <button id="detailToggle" onclick="toggleDetail()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:.65rem 1rem;margin-top:.9rem;margin-bottom:.9rem;cursor:pointer;font-size:13px;color:#8E8E93;display:flex;justify-content:space-between;align-items:center;">
+    <span>今日のステータス・詳細</span>
+    <span id="detailArrow">▾</span>
+  </button>
+  <div id="detailPanel" style="display:none;">
+    <div class="status-card" id="statusCard">
+      <div class="status-label">今日のステータス</div>
+      <div class="status-value" id="statusText">未打刻</div>
+    </div>
+    <div class="info-box" id="infoBox">
+      休憩 自動差引：10:00〜10:10 / 12:00〜12:45 / 15:00〜15:10（計65分）<br>
+      <span id="infoOT"></span>　／　締め：毎月21日〜翌20日<br>
+      📍 会社から100m以内で出社打刻、範囲外はテレワーク
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.3.0　2026-07-08</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -519,7 +531,7 @@ function saveName(){
   showToast(`氏名を「${v}」に設定しました`);
   // 初回のみ：勤務タイプを選んでもらう（打刻前に確定させる）
   if(wasEmpty && !localStorage.getItem('kintai_work_type_set')){
-    localStorage.setItem('kintai_work_type_set','1'); // 勤務タイプは総務が設定（既定フレックス）
+    localStorage.setItem('kintai_work_type_set','1'); // 勤務タイプは総務が設定（既定：一般）
   }
   tryStartQr();
   syncFromSheet();
@@ -693,7 +705,7 @@ function saveLeave(){
   localStorage.setItem('kintai_leave_init_days',leaveInitDays);
   localStorage.setItem('kintai_leave_init_hours',leaveInitHours);
 }
-let workType = localStorage.getItem('kintai_work_type')||'flex'; // flex or general
+let workType = localStorage.getItem('kintai_work_type')||'general'; // flex or general（既定は一般）
 const WORK_TYPE_PASSWORD = '2022';
 const ADMIN_PASSWORD = '5311';
 let adminMode = localStorage.getItem('kintai_admin')==='1';
@@ -935,6 +947,21 @@ function updateClock(){
 
 function render(){
   const t=getToday(),p=getCurrentPeriod();
+  {
+    const todayDateStr=new Date().toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
+    const twDateEl=document.getElementById('todayWorkDate');
+    const twTypeEl=document.getElementById('todayWorkType');
+    const twTimesEl=document.getElementById('todayWorkTimes');
+    if(twDateEl) twDateEl.textContent=todayDateStr+'の勤務';
+    if(t){
+      const dispType=t.outType||t.inType||'';
+      if(twTypeEl) twTypeEl.textContent=dispType;
+      if(twTimesEl) twTimesEl.textContent=`${t.in||'--:--'} → ${t.out||'--:--'}`;
+    } else {
+      if(twTypeEl) twTypeEl.textContent='';
+      if(twTimesEl) twTimesEl.textContent='まだ出勤していません';
+    }
+  }
   if(!t){
     document.getElementById('statusText').textContent='未打刻';
 
@@ -994,33 +1021,12 @@ function render(){
       const otStr=c&&c.otMins!==0?`<span style="color:${c.otMins>0?'#FF3B30':'#34C759'};font-size:11px;">${hm(c.otMins)}</span>`:'';
       const leaveStr=r.leave?`<span style="color:#FF9500;font-size:11px;">🟡 ${LEAVE_LABEL[r.leave]}</span>`:'';
       const borderLeft=r.leave?'border-left:3px solid #FF9500;':'';
-      list.innerHTML+=`<div style="background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;${borderLeft}" onclick="openEdit(${idx})">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:13px;color:#8E8E93;">${r.date}</span>
-          <span style="font-size:13px;color:#1C1C1E;"><span style="color:#34C759;">●</span>${r.in||'--'}&nbsp;<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
-        </div>
-        <div style="font-size:11px;color:#8E8E93;margin-top:3px;display:flex;justify-content:space-between;">
-          <span>${typeIcon}実労働 ${ws}</span><span>${otStr}${otStr&&leaveStr?'&nbsp;':''}${leaveStr}</span>
-        </div>
+      list.innerHTML+=`<div style="background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;${borderLeft}" onclick="openEdit(${idx})">
+        <span style="font-size:13px;color:#8E8E93;white-space:nowrap;flex-shrink:0;">${r.date.slice(5).replace('-','/')}</span>
+        <span style="font-size:14px;color:#1C1C1E;white-space:nowrap;flex-shrink:0;">${typeIcon}<span style="color:#34C759;">●</span>${r.in||'--'}<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
+        <span style="font-size:11px;color:#8E8E93;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;">${ws}${otStr?'&nbsp;'+otStr:''}${leaveStr?'&nbsp;'+leaveStr:''}</span>
       </div>`;
     });
-  }
-}
-
-let longPressTimer = null;
-
-function startLongPress(e){
-  longPressTimer = setTimeout(()=>{
-    toggleSettingMenu();
-    // バイブレーション（対応端末のみ）
-    if(navigator.vibrate) navigator.vibrate(50);
-  }, 600);
-}
-
-function cancelLongPress(){
-  if(longPressTimer){
-    clearTimeout(longPressTimer);
-    longPressTimer=null;
   }
 }
 
@@ -1281,6 +1287,17 @@ function restoreDetailState(){
     const p=document.getElementById('detailPanel');
     if(p){ p.style.display='block'; document.getElementById('detailArrow').textContent='▴'; }
   }
+  if(localStorage.getItem('kintai_info_open')==='1'){
+    const p=document.getElementById('infoPanel');
+    if(p){ p.style.display='block'; document.getElementById('infoArrow').textContent='▴'; }
+  }
+}
+function toggleInfo(){
+  const p=document.getElementById('infoPanel');
+  const show = (p.style.display==='none');
+  p.style.display = show ? 'block' : 'none';
+  document.getElementById('infoArrow').textContent = show ? '▴' : '▾';
+  localStorage.setItem('kintai_info_open', show ? '1' : '0');
 }
 // 先々月以前の記録を自動削除（今月＋先月のみ保持）
 function pruneOldRecords(){
@@ -1468,6 +1485,20 @@ function getPastPeriods(n){
   return periods;
 }
 
+function recordRowHTML(r, idx, clickable){
+  const c=calcDay(r);
+  const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
+  const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
+  const leaveTag=r.leave?`<span style="color:#FF9500;font-size:11px;">${LEAVE_LABEL[r.leave]}</span>`:'';
+  const otStr=c&&c.otMins!==0?`<span style="color:${otC};font-size:11px;">${hm(c.otMins)}</span>`:'';
+  const ws=c?hm(c.totalMins):(r.out?'--':'退勤未打刻');
+  return `<div style="background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:6px;${clickable?'cursor:pointer;':'opacity:0.82;'}display:flex;align-items:center;gap:10px;" ${clickable?`onclick="openEdit(${idx})"`:''}>
+    <span style="font-size:14px;color:#8E8E93;white-space:nowrap;flex-shrink:0;">${r.date.slice(5).replace('-','/')}</span>
+    <span style="font-size:19px;font-weight:500;color:#1C1C1E;white-space:nowrap;flex-shrink:0;">${typeIcon?typeIcon+' ':''}<span style="color:#34C759;">●</span>${r.in||'--'}<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
+    <span style="font-size:11px;color:#8E8E93;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;">${ws}${otStr?'&nbsp;'+otStr:''}${leaveTag?'&nbsp;'+leaveTag:''}</span>
+  </div>`;
+}
+
 function renderHistory(){
   const periods=[getCurrentPeriod(),...getPastPeriods(12)];
   const currentPeriod=periods[0];
@@ -1483,23 +1514,9 @@ function renderHistory(){
     } else {
       [...pr].sort((a,b)=>a.date<b.date?1:-1).forEach(r=>{
         const idx=records.indexOf(r);
-        const c=calcDay(r);
-        const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
-        const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
-        const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
         const d=document.createElement('div');
-        d.style.cssText='background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;';
-        d.onclick=()=>openEdit(idx);
-        d.innerHTML=`
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="color:#8E8E93;font-size:13px;">${r.date.slice(5).replace('-','/')} ${typeIcon}</span>
-            <span style="font-size:13px;color:#1C1C1E;">${r.in||'--'}〜${r.out||'--'} ${leaveTag}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E8E93;margin-top:3px;">
-            <span>実労働 ${c?hm(c.totalMins):'--'}</span>
-            <span style="color:${otC};">時間外 ${c?hm(c.otMins):'--'}</span>
-          </div>`;
-        currentContainer.appendChild(d);
+        d.innerHTML=recordRowHTML(r, idx, true);
+        currentContainer.appendChild(d.firstElementChild);
       });
     }
   }
@@ -1516,22 +1533,9 @@ function renderHistory(){
       head.textContent=`先月の実績（${prevPeriod.start.slice(5).replace('-','/')}〜${prevPeriod.end.slice(5).replace('-','/')}）`;
       container.appendChild(head);
       pr.forEach(r=>{
-        const c=calcDay(r);
-        const otC=c&&c.otMins>0?'#FF3B30':c&&c.otMins<0?'#34C759':'#8E8E93';
-        const typeIcon={'出社':'','テレワーク':'🏠','出張等':'🚗'}[r.inType]||'';
-        const leaveTag=r.leave?`<span style="color:#FF9500;font-size:10px;">${LEAVE_LABEL[r.leave]}</span>`:'';
         const d=document.createElement('div');
-        d.style.cssText='background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;opacity:0.82;';
-        d.innerHTML=`
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="color:#8E8E93;font-size:13px;">${r.date.slice(5).replace('-','/')} ${typeIcon}</span>
-            <span style="font-size:13px;color:#1C1C1E;">${r.in||'--'}〜${r.out||'--'} ${leaveTag}</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:#8E8E93;margin-top:3px;">
-            <span>実労働 ${c?hm(c.totalMins):'--'}</span>
-            <span style="color:${otC};">時間外 ${c?hm(c.otMins):'--'}</span>
-          </div>`;
-        container.appendChild(d);
+        d.innerHTML=recordRowHTML(r, records.indexOf(r), false);
+        container.appendChild(d.firstElementChild);
       });
     }
   }
