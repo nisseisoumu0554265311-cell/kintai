@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.3.0　2026-07-08</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.4.0　2026-07-21</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -481,8 +481,8 @@ function updateButtons(){
   // 範囲外ボタンの表示切り替え
   document.getElementById('outsideBtns').style.display=isOutside?'flex':'none';
 
-  if(!t){
-    // 未打刻
+  if(!t || !t.in){
+    // 未打刻（指定有給日のプリセットのみで、まだ出勤していない場合も含む）
     btnIn.disabled=!(hasName&&isInside);
     btnOut.disabled=true;
     btnTW.disabled=!(hasName&&isOutside);
@@ -603,7 +603,8 @@ async function sendToSheet(data){
 async function clockIn(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
-  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const t0=getToday();
+  if(t0 && t0.in){showToast('本日はすでに出勤済みです');return;}
   const btn=document.getElementById('btnIn');
   const originalText=btn.textContent;
   isSending=true;
@@ -615,14 +616,18 @@ async function clockIn(){
   } finally { isSending=false; }
   btn.textContent=originalText;
   if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
-  records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
+  if(t0){
+    t0.in=now; t0.inType='出社'; t0.leave=''; // 指定有給日などのプリセットがあれば解除
+  } else {
+    records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
+  }
   save();
   render();showToast('出勤打刻しました ✓');
 }
 async function clockOut(){
   if(isSending){showToast('送信中です…');return;}
   const t=getToday();
-  if(!t||t.out){showToast('先に出勤打刻してください');return;}
+  if(!t||!t.in||t.out){showToast('先に出勤打刻してください');return;}
   const btn=document.getElementById('btnOut');
   const originalText=btn.textContent;
   isSending=true;
@@ -647,7 +652,8 @@ async function clockOut(){
 async function clockBiz(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
-  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const t0=getToday();
+  if(t0 && t0.in){showToast('本日はすでに出勤済みです');return;}
   const btn=document.getElementById('btnBiz');
   const originalText=btn.textContent;
   isSending=true;
@@ -659,14 +665,19 @@ async function clockBiz(){
   } finally { isSending=false; }
   btn.textContent=originalText;
   if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
-  records.unshift({date:todayKey(),in:now,out:'',inType:'出張等',outType:''});
+  if(t0){
+    t0.in=now; t0.inType='出張等'; t0.leave='';
+  } else {
+    records.unshift({date:todayKey(),in:now,out:'',inType:'出張等',outType:''});
+  }
   save();
   render();showToast('🚗 出張等で出勤しました ✓');
 }
 async function clockTelework(){
   if(isSending){showToast('送信中です…');return;}
   if(!userName){showToast('先に氏名を設定してください');return;}
-  if(getToday()){showToast('本日はすでに出勤済みです');return;}
+  const t0=getToday();
+  if(t0 && t0.in){showToast('本日はすでに出勤済みです');return;}
   const btn=document.getElementById('btnTelework');
   const originalText=btn.textContent;
   isSending=true;
@@ -678,7 +689,11 @@ async function clockTelework(){
   } finally { isSending=false; }
   btn.textContent=originalText;
   if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
-  records.unshift({date:todayKey(),in:now,out:'',inType:'テレワーク',outType:''});
+  if(t0){
+    t0.in=now; t0.inType='テレワーク'; t0.leave='';
+  } else {
+    records.unshift({date:todayKey(),in:now,out:'',inType:'テレワーク',outType:''});
+  }
   save();
   render();showToast('🏠 テレワーク出勤しました ✓');
 }
@@ -984,17 +999,20 @@ function render(){
     const twTypeEl=document.getElementById('todayWorkType');
     const twTimesEl=document.getElementById('todayWorkTimes');
     if(twDateEl) twDateEl.textContent=todayDateStr+'の勤務';
-    if(t){
+    if(t && t.in){
       const dispType=t.outType||t.inType||'';
       if(twTypeEl) twTypeEl.textContent=dispType;
       if(twTimesEl) twTimesEl.textContent=`${t.in||'--:--'} → ${t.out||'--:--'}`;
+    } else if(t && t.leave){
+      if(twTypeEl) twTypeEl.textContent='';
+      if(twTimesEl) twTimesEl.textContent='本日は有給（全休）です';
     } else {
       if(twTypeEl) twTypeEl.textContent='';
       if(twTimesEl) twTimesEl.textContent='まだ出勤していません';
     }
   }
-  if(!t){
-    document.getElementById('statusText').textContent='未打刻';
+  if(!t || !t.in){
+    document.getElementById('statusText').textContent=(t&&t.leave)?'本日は有給（全休）です':'未打刻';
 
   } else if(t.in&&!t.out){
     const typeIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
