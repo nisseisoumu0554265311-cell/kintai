@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.4.0　2026-07-21</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.5.0　2026-07-24</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -552,8 +552,9 @@ document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='
 
 // 打刻をスプレッドシートに送信
 async function sendToSheet(data){
-  if(!SHEET_URL||SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return false;
+  if(!SHEET_URL||SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return {ok:false, message:''};
   let ok = false;
+  let message = '';
   try{
     const params=new URLSearchParams({
       name:data.name,
@@ -570,6 +571,9 @@ async function sendToSheet(data){
       const writeRes = await fetch(writeUrl, {cache:'no-store'});
       const writeText = await writeRes.text();
       ok = writeText.indexOf('"status":"ok"') !== -1;
+      if(!ok){
+        try { message = JSON.parse(writeText).message || ''; } catch(_e) {}
+      }
     } catch(_) {
       try {
         await fetch(writeUrl,{method:'GET',mode:'no-cors',cache:'no-store'});
@@ -577,7 +581,7 @@ async function sendToSheet(data){
       } catch(__) { ok = false; }
     }
     // 有給打刻時にスプレッドシートの有給残シートにも記録
-    if(data.leave && data.leave !== '' && data.leave !== 'special'){
+    if(ok && data.leave && data.leave !== '' && data.leave !== 'special'){
       const leaveParams=new URLSearchParams({
         type:'recordLeave',
         name:data.name,
@@ -593,10 +597,10 @@ async function sendToSheet(data){
         render();
       }
     }
-    return ok;
+    return {ok, message};
   }catch(e){
     console.log('送信エラー',e);
-    return false;
+    return {ok:false, message:''};
   }
 }
 
@@ -610,12 +614,12 @@ async function clockIn(){
   isSending=true;
   btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
-  let ok=false;
+  let ok=false, message='';
   try{
-    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社',empType:workType});
+    ({ok, message}=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出社',empType:workType}));
   } finally { isSending=false; }
   btn.textContent=originalText;
-  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
+  if(!ok){ updateButtons(); showToast(message || '記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   if(t0){
     t0.in=now; t0.inType='出社'; t0.leave=''; // 指定有給日などのプリセットがあれば解除
   } else {
@@ -635,12 +639,12 @@ async function clockOut(){
   const now=nowTimeStr();
   const outType=gpsStatus==='inside'?'出社':'出張等';
   const combinedType=t.inType===outType?t.inType:'複合('+t.inType+'→'+outType+')';
-  let ok=false;
+  let ok=false, message='';
   try{
-    ok=await sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType});
+    ({ok, message}=await sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType}));
   } finally { isSending=false; }
   btn.textContent=originalText;
-  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
+  if(!ok){ updateButtons(); showToast(message || '記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   t.out=now;
   t.outType=outType;
   save();
@@ -659,12 +663,12 @@ async function clockBiz(){
   isSending=true;
   btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
-  let ok=false;
+  let ok=false, message='';
   try{
-    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等',empType:workType});
+    ({ok, message}=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'出張等',empType:workType}));
   } finally { isSending=false; }
   btn.textContent=originalText;
-  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
+  if(!ok){ updateButtons(); showToast(message || '記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   if(t0){
     t0.in=now; t0.inType='出張等'; t0.leave='';
   } else {
@@ -683,12 +687,12 @@ async function clockTelework(){
   isSending=true;
   btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
-  let ok=false;
+  let ok=false, message='';
   try{
-    ok=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク',empType:workType});
+    ({ok, message}=await sendToSheet({name:userName,date:todayKey(),type:'出勤',time:now,workType:'テレワーク',empType:workType}));
   } finally { isSending=false; }
   btn.textContent=originalText;
-  if(!ok){ updateButtons(); showToast('記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
+  if(!ok){ updateButtons(); showToast(message || '記録に失敗しました。電波状況を確認してもう一度お試しください'); return; }
   if(t0){
     t0.in=now; t0.inType='テレワーク'; t0.leave='';
   } else {
@@ -864,12 +868,13 @@ async function saveEdit(){
     save();render();closeEdit();
     showToast('保存中…');
     savePending=true;
+    let failMsg = '';
     try{
-      if(inT) await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
-      if(outT) await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
-      if(leave) await sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave});
+      if(inT){ const r1=await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok) failMsg = r1.message || '出勤の保存に失敗しました'; }
+      if(outT){ const r2=await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok) failMsg = r2.message || '退勤の保存に失敗しました'; }
+      if(leave){ const r3=await sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave}); if(!r3.ok) failMsg = r3.message || '有給の保存に失敗しました'; }
     } finally { savePending=false; }
-    showToast('記録を追加しました ✓');
+    showToast(failMsg || '記録を追加しました ✓');
     return;
   }
 
@@ -885,12 +890,13 @@ async function saveEdit(){
   save();render();closeEdit();
   showToast('保存中…');
   savePending=true;
+  let failMsg2 = '';
   try{
-    if(inT!==originalIn || wt!==originalType) await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''});
-    if(outT!==originalOut) await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''});
-    if(leave!==originalLeave) await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave});
+    if(inT!==originalIn || wt!==originalType){ const r1=await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok) failMsg2 = r1.message || '出勤の保存に失敗しました'; }
+    if(outT!==originalOut){ const r2=await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok) failMsg2 = r2.message || '退勤の保存に失敗しました'; }
+    if(leave!==originalLeave){ const r3=await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave}); if(!r3.ok) failMsg2 = r3.message || '有給の保存に失敗しました'; }
   } finally { savePending=false; }
-  showToast('記録を更新しました ✓');
+  showToast(failMsg2 || '記録を更新しました ✓');
 }
 
 async function cancelClockOut(){
@@ -900,10 +906,11 @@ async function cancelClockOut(){
   r.out='';save();render();closeEdit();
   showToast('取り消し中…');
   savePending=true;
+  let cancelResult;
   try{
-    await sendToSheet({name:userName,date:delDate,type:'退勤',time:'',workType:r.inType||'',empType:workType,leave:''});
+    cancelResult=await sendToSheet({name:userName,date:delDate,type:'退勤',time:'',workType:r.inType||'',empType:workType,leave:''});
   } finally { savePending=false; }
-  showToast('退勤打刻を取り消しました');
+  showToast((cancelResult && !cancelResult.ok) ? (cancelResult.message || '取り消しに失敗しました') : '退勤打刻を取り消しました');
 }
 
 async function deleteRecord(){
@@ -1274,15 +1281,15 @@ async function qrRecord(wt){
   const now = nowTimeStr();
   const type = action === 'in' ? '出勤' : '退勤';
   qrShowSending();
-  let ok = false;
+  let ok = false, message = '';
   try{
-    ok = await sendToSheet({name:userName, date:todayKey(), type:type, time:now, workType:wt, empType:workType});
+    ({ok, message} = await sendToSheet({name:userName, date:todayKey(), type:type, time:now, workType:wt, empType:workType}));
   } finally {
     isSending = false;
   }
   if(!ok){
     showQrConfirm();
-    showToast('記録に失敗しました。電波状況を確認してもう一度お試しください');
+    showToast(message || '記録に失敗しました。電波状況を確認してもう一度お試しください');
     return;
   }
   if(action === 'in'){
