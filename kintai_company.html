@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.5.0　2026-07-24</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.6.0　2026-07-24</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -840,7 +840,7 @@ function openEdit(idx){
   document.getElementById('editIn').value=r.in||'';
   document.getElementById('editOut').value=r.out||'';
   document.getElementById('editLeave').value=r.leave||'';
-  document.getElementById('editLeaveRow').style.display=adminMode?'flex':'none';
+  document.getElementById('editLeaveRow').style.display='flex'; // 有給は本人も入力可能に
   document.getElementById('btnDel').style.display=adminMode?'block':'none';
   document.getElementById('btnCancelOut').style.display=r.out?'block':'none';
   document.getElementById('editOverlay').classList.add('open');
