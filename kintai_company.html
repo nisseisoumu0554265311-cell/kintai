@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.7.0　2026-07-24</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.7.1　2026-08-05</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -836,7 +836,7 @@ function setTimeSelectValue(hSel, mSel, timeStr){
 }
 function getTimeSelectValue(hSel, mSel){
   if(hSel.value==='' || mSel.value==='') return '';
-  return hSel.value + ':' + mSel.value.padStart(2,'0');
+  return hSel.value.padStart(2,'0') + ':' + mSel.value.padStart(2,'0');
 }
 
 function openAddRecord(){
