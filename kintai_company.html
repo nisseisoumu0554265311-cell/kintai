@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.6.0　2026-07-24</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.7.0　2026-07-24</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -253,11 +253,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">出勤時刻</label>
-      <input type="time" id="editIn" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+      <div>
+        <select id="editInH" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>：<select id="editInM" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>
+      </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">退勤時刻</label>
-      <input type="time" id="editOut" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+      <div>
+        <select id="editOutH" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>：<select id="editOutM" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>
+      </div>
     </div>
     <div id="editLeaveRow" style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
       <label style="font-size:15px;color:#1C1C1E;">有給</label>
@@ -805,6 +809,36 @@ const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午�
 let editIdx = null;
 let savePending = false; // 編集保存中フラグ（保存完了まで同期での上書きを防ぐ）
 
+// 時・分プルダウン（editInH/editInM/editOutH/editOutM）のヘルパー
+function populateTimeSelect(sel, max){
+  if (sel.options.length > 0) return; // 既に生成済みなら何もしない
+  const blank = document.createElement('option');
+  blank.value = ''; blank.textContent = '--';
+  sel.appendChild(blank);
+  for (let i = 0; i <= max; i++){
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = String(i).padStart(2,'0');
+    sel.appendChild(opt);
+  }
+}
+function initTimeSelects(){
+  populateTimeSelect(document.getElementById('editInH'), 23);
+  populateTimeSelect(document.getElementById('editInM'), 59);
+  populateTimeSelect(document.getElementById('editOutH'), 23);
+  populateTimeSelect(document.getElementById('editOutM'), 59);
+}
+function setTimeSelectValue(hSel, mSel, timeStr){
+  if(!timeStr){ hSel.value=''; mSel.value=''; return; }
+  const parts = timeStr.split(':');
+  hSel.value = String(parseInt(parts[0],10)||0);
+  mSel.value = String(parseInt(parts[1],10)||0);
+}
+function getTimeSelectValue(hSel, mSel){
+  if(hSel.value==='' || mSel.value==='') return '';
+  return hSel.value + ':' + mSel.value.padStart(2,'0');
+}
+
 function openAddRecord(){
   editIdx=-1;
   document.getElementById('editTitle').textContent='打刻を後日追加';
@@ -816,8 +850,9 @@ function openAddRecord(){
   editDateEl.max=period.end;
   editDateEl.readOnly=false;
   document.getElementById('editWorkType').value='出社';
-  document.getElementById('editIn').value='';
-  document.getElementById('editOut').value='';
+  initTimeSelects();
+  setTimeSelectValue(document.getElementById('editInH'), document.getElementById('editInM'), '');
+  setTimeSelectValue(document.getElementById('editOutH'), document.getElementById('editOutM'), '');
   document.getElementById('editLeave').value='';
   document.getElementById('btnDel').style.display='none';
   document.getElementById('btnCancelOut').style.display='none';
@@ -837,8 +872,9 @@ function openEdit(idx){
   document.getElementById('editDate').value=r.date;
   document.getElementById('editDate').readOnly=true;
   document.getElementById('editWorkType').value=r.inType||'出社';
-  document.getElementById('editIn').value=r.in||'';
-  document.getElementById('editOut').value=r.out||'';
+  initTimeSelects();
+  setTimeSelectValue(document.getElementById('editInH'), document.getElementById('editInM'), r.in||'');
+  setTimeSelectValue(document.getElementById('editOutH'), document.getElementById('editOutM'), r.out||'');
   document.getElementById('editLeave').value=r.leave||'';
   document.getElementById('editLeaveRow').style.display='flex'; // 有給は本人も入力可能に
   document.getElementById('btnDel').style.display=adminMode?'block':'none';
@@ -849,8 +885,8 @@ function openEdit(idx){
 function closeEdit(){document.getElementById('editOverlay').classList.remove('open');editIdx=null;}
 
 async function saveEdit(){
-  const inT=document.getElementById('editIn').value;
-  const outT=document.getElementById('editOut').value;
+  const inT=getTimeSelectValue(document.getElementById('editInH'), document.getElementById('editInM'));
+  const outT=getTimeSelectValue(document.getElementById('editOutH'), document.getElementById('editOutM'));
   const leave=document.getElementById('editLeave').value;
   const wt=document.getElementById('editWorkType').value;
 
