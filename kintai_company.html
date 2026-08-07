@@ -212,7 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.7.1　2026-08-05</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.7.2　2026-08-05</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -240,32 +240,32 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <div class="modal-handle"></div>
     <div class="modal-title" id="editTitle">記録を編集</div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:15px;color:#1C1C1E;">日付</label>
-      <input type="date" id="editDate" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+      <label style="font-size:16px;color:#1C1C1E;">日付</label>
+      <input type="date" id="editDate" style="border:none;background:none;font-size:17px;color:#007AFF;text-align:right;outline:none;">
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:15px;color:#1C1C1E;">勤務区分</label>
-      <select id="editWorkType" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+      <label style="font-size:16px;color:#1C1C1E;">勤務区分</label>
+      <select id="editWorkType" style="border:none;background:none;font-size:17px;color:#007AFF;text-align:right;outline:none;">
         <option value="出社">出社</option>
         <option value="テレワーク">テレワーク</option>
         <option value="出張等">出張等</option>
       </select>
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:15px;color:#1C1C1E;">出勤時刻</label>
+      <label style="font-size:16px;color:#1C1C1E;">出勤時刻</label>
       <div>
-        <select id="editInH" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>：<select id="editInM" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>
+        <select id="editInH" style="border:none;background:none;font-size:19px;font-weight:500;color:#007AFF;outline:none;"></select>：<select id="editInM" style="border:none;background:none;font-size:19px;font-weight:500;color:#007AFF;outline:none;"></select>
       </div>
     </div>
     <div style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:15px;color:#1C1C1E;">退勤時刻</label>
+      <label style="font-size:16px;color:#1C1C1E;">退勤時刻</label>
       <div>
-        <select id="editOutH" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>：<select id="editOutM" style="border:none;background:none;font-size:15px;color:#007AFF;outline:none;"></select>
+        <select id="editOutH" style="border:none;background:none;font-size:19px;font-weight:500;color:#007AFF;outline:none;"></select>：<select id="editOutM" style="border:none;background:none;font-size:19px;font-weight:500;color:#007AFF;outline:none;"></select>
       </div>
     </div>
     <div id="editLeaveRow" style="background:#fff;border-radius:12px;padding:.75rem 1rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
-      <label style="font-size:15px;color:#1C1C1E;">有給</label>
-      <select id="editLeave" style="border:none;background:none;font-size:15px;color:#007AFF;text-align:right;outline:none;">
+      <label style="font-size:16px;color:#1C1C1E;">有給</label>
+      <select id="editLeave" style="border:none;background:none;font-size:17px;color:#007AFF;text-align:right;outline:none;">
         <option value="">なし</option>
         <option value="all">全日有給</option>
         <option value="half_am">午前半休（4h）</option>
@@ -1113,9 +1113,9 @@ function render(){
       const otStr=c&&c.otMins!==0?`<span style="color:${c.otMins>0?'#FF3B30':'#34C759'};font-size:11px;">${hm(c.otMins)}</span>`:'';
       const leaveStr=r.leave?`<span style="color:#FF9500;font-size:11px;">🟡 ${LEAVE_LABEL[r.leave]}</span>`:'';
       const borderLeft=r.leave?'border-left:3px solid #FF9500;':'';
-      list.innerHTML+=`<div style="background:#fff;border-radius:14px;padding:.65rem 1rem;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;${borderLeft}" onclick="openEdit(${idx})">
-        <span style="font-size:13px;color:#8E8E93;white-space:nowrap;flex-shrink:0;">${r.date.slice(5).replace('-','/')}</span>
-        <span style="font-size:14px;color:#1C1C1E;white-space:nowrap;flex-shrink:0;">${typeIcon}<span style="color:#34C759;">●</span>${r.in||'--'}<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
+      list.innerHTML+=`<div style="background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:6px;cursor:pointer;display:flex;align-items:center;gap:8px;${borderLeft}" onclick="openEdit(${idx})">
+        <span style="font-size:14px;color:#8E8E93;white-space:nowrap;flex-shrink:0;">${r.date.slice(5).replace('-','/')}</span>
+        <span style="font-size:19px;font-weight:500;color:#1C1C1E;white-space:nowrap;flex-shrink:0;">${typeIcon}<span style="color:#34C759;">●</span>${r.in||'--'}<span style="color:#FF3B30;">●</span>${r.out||'--'}</span>
         <span style="font-size:11px;color:#8E8E93;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;">${ws}${otStr?'&nbsp;'+otStr:''}${leaveStr?'&nbsp;'+leaveStr:''}</span>
       </div>`;
     });
