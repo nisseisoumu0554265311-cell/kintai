@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.1　2026-08-27</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.2　2026-08-27</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -400,6 +400,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
 <div class="toast" id="toast"></div>
 
+<!-- 重要なエラー用の確認ポップアップ（タップで消す） -->
+<div class="overlay" id="alertOverlay">
+  <div class="modal">
+    <div style="font-size:16px;color:#1C1C1E;line-height:1.6;margin-bottom:1.2rem;" id="alertMessage"></div>
+    <button onclick="closeImportantAlert()" style="width:100%;padding:.75rem 0;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;border:none;background:#007AFF;color:#fff;">了解</button>
+  </div>
+</div>
+
 <script>
 // ============ 設定 ============
 const COMPANY_LAT = 35.610473;
@@ -431,6 +439,8 @@ function toMins(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return 
 function hm(mins){const sign=mins<0?'-':'';const a=Math.abs(Math.round(mins));return `${sign}${Math.floor(a/60)}h${pad(a%60)}m`;}
 function save(){localStorage.setItem('kintai_company',JSON.stringify(records));}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');const dur=Math.max(2500,Math.min(6000,msg.length*90));clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.classList.remove('show'),dur);}
+function showImportantAlert(msg){document.getElementById('alertMessage').textContent=msg;document.getElementById('alertOverlay').classList.add('open');}
+function closeImportantAlert(){document.getElementById('alertOverlay').classList.remove('open');}
 function getToday(){return records.find(r=>r.date===todayKey())||null;}
 
 // GPS距離計算（メートル）
@@ -908,13 +918,14 @@ async function saveEdit(){
     showToast('保存中…');
     savePending=true;
     let failMsg = '';
+    let importantFail = false;
     try{
-      if(inT){ const r1=await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME') newRec.in=''; } }
-      if(outT){ const r2=await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME') newRec.out=''; } }
+      if(inT){ const r1=await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME'){ newRec.in=''; importantFail=true; } } }
+      if(outT){ const r2=await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME'){ newRec.out=''; importantFail=true; } } }
       if(leave){ const r3=await sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave}); if(!r3.ok) failMsg = r3.message || '有給の保存に失敗しました'; }
     } finally { savePending=false; }
     save();render();
-    showToast(failMsg || '記録を追加しました ✓');
+    if(importantFail) showImportantAlert(failMsg); else showToast(failMsg || '記録を追加しました ✓');
     return;
   }
 
@@ -931,13 +942,14 @@ async function saveEdit(){
   showToast('保存中…');
   savePending=true;
   let failMsg2 = '';
+  let importantFail2 = false;
   try{
-    if(inT!==originalIn || wt!==originalType){ const r1=await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg2 = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME') r.in=''; } }
-    if(outT!==originalOut){ const r2=await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg2 = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME') r.out=''; } }
+    if(inT!==originalIn || wt!==originalType){ const r1=await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg2 = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME'){ r.in=''; importantFail2=true; } } }
+    if(outT!==originalOut){ const r2=await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg2 = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME'){ r.out=''; importantFail2=true; } } }
     if(leave!==originalLeave){ const r3=await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave}); if(!r3.ok) failMsg2 = r3.message || '有給の保存に失敗しました'; }
   } finally { savePending=false; }
   save();render();
-  showToast(failMsg2 || '記録を更新しました ✓');
+  if(importantFail2) showImportantAlert(failMsg2); else showToast(failMsg2 || '記録を更新しました ✓');
 }
 
 async function cancelClockOut(){
