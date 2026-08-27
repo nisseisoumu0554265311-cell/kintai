@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.0　2026-08-27</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.1　2026-08-27</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -558,9 +558,10 @@ document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='
 
 // 打刻をスプレッドシートに送信
 async function sendToSheet(data){
-  if(!SHEET_URL||SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return {ok:false, message:''};
+  if(!SHEET_URL||SHEET_URL==='YOUR_GOOGLE_APPS_SCRIPT_URL') return {ok:false, message:'', code:''};
   let ok = false;
   let message = '';
+  let code = '';
   try{
     const params=new URLSearchParams({
       name:data.name,
@@ -578,7 +579,7 @@ async function sendToSheet(data){
       const writeText = await writeRes.text();
       ok = writeText.indexOf('"status":"ok"') !== -1;
       if(!ok){
-        try { message = JSON.parse(writeText).message || ''; } catch(_e) {}
+        try { const errObj=JSON.parse(writeText); message = errObj.message || ''; code = errObj.code || ''; } catch(_e) {}
       }
     } catch(_) {
       try {
@@ -603,10 +604,10 @@ async function sendToSheet(data){
         render();
       }
     }
-    return {ok, message};
+    return {ok, message, code};
   }catch(e){
     console.log('送信エラー',e);
-    return {ok:false, message:''};
+    return {ok:false, message:'', code:''};
   }
 }
 
@@ -908,10 +909,11 @@ async function saveEdit(){
     savePending=true;
     let failMsg = '';
     try{
-      if(inT){ const r1=await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok) failMsg = r1.message || '出勤の保存に失敗しました'; }
-      if(outT){ const r2=await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok) failMsg = r2.message || '退勤の保存に失敗しました'; }
+      if(inT){ const r1=await sendToSheet({name:userName,date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME') newRec.in=''; } }
+      if(outT){ const r2=await sendToSheet({name:userName,date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME') newRec.out=''; } }
       if(leave){ const r3=await sendToSheet({name:userName,date,type:'有給',time:'',workType:'',empType:workType,leave}); if(!r3.ok) failMsg = r3.message || '有給の保存に失敗しました'; }
     } finally { savePending=false; }
+    save();render();
     showToast(failMsg || '記録を追加しました ✓');
     return;
   }
@@ -930,10 +932,11 @@ async function saveEdit(){
   savePending=true;
   let failMsg2 = '';
   try{
-    if(inT!==originalIn || wt!==originalType){ const r1=await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok) failMsg2 = r1.message || '出勤の保存に失敗しました'; }
-    if(outT!==originalOut){ const r2=await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok) failMsg2 = r2.message || '退勤の保存に失敗しました'; }
+    if(inT!==originalIn || wt!==originalType){ const r1=await sendToSheet({name:userName,date:r.date,type:'出勤',time:inT,workType:wt,empType:workType,leave:''}); if(!r1.ok){ failMsg2 = r1.message || '出勤の保存に失敗しました'; if(r1.code==='FUTURE_TIME') r.in=''; } }
+    if(outT!==originalOut){ const r2=await sendToSheet({name:userName,date:r.date,type:'退勤',time:outT,workType:wt,empType:workType,leave:''}); if(!r2.ok){ failMsg2 = r2.message || '退勤の保存に失敗しました'; if(r2.code==='FUTURE_TIME') r.out=''; } }
     if(leave!==originalLeave){ const r3=await sendToSheet({name:userName,date:r.date,type:'有給',time:'',workType:'',empType:workType,leave:leave}); if(!r3.ok) failMsg2 = r3.message || '有給の保存に失敗しました'; }
   } finally { savePending=false; }
+  save();render();
   showToast(failMsg2 || '記録を更新しました ✓');
 }
 
