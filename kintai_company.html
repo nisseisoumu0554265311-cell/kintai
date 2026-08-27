@@ -62,7 +62,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .stat-val{font-size:18px;font-weight:300;color:#1C1C1E;font-variant-numeric:tabular-nums;}
 .stat-val.ot{color:#FF3B30;}
 .info-box{background:#fff;border-radius:14px;padding:.75rem 1rem;margin-bottom:.9rem;font-size:11px;color:#8E8E93;line-height:1.8;}
-.toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%);background:rgba(28,28,30,.85);backdrop-filter:blur(10px);border-radius:20px;padding:.6rem 1.2rem;font-size:13px;color:#fff;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:100;}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:rgba(28,28,30,.92);backdrop-filter:blur(10px);border-radius:16px;padding:.75rem 1.2rem;font-size:14px;line-height:1.5;color:#fff;opacity:0;transition:opacity .3s;pointer-events:none;white-space:normal;max-width:88%;text-align:center;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.25);}
 .toast.show{opacity:1;}
 /* 名前入力モーダル */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;}
@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.8.3　2026-08-24</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.0　2026-08-27</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -430,7 +430,7 @@ function nowTimeStr(){const n=new Date();return `${pad(n.getHours())}:${pad(n.ge
 function toMins(t){if(!t)return null;const[h,m]=t.split(':').map(Number);return h*60+m;}
 function hm(mins){const sign=mins<0?'-':'';const a=Math.abs(Math.round(mins));return `${sign}${Math.floor(a/60)}h${pad(a%60)}m`;}
 function save(){localStorage.setItem('kintai_company',JSON.stringify(records));}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');const dur=Math.max(2500,Math.min(6000,msg.length*90));clearTimeout(window._toastTimer);window._toastTimer=setTimeout(()=>t.classList.remove('show'),dur);}
 function getToday(){return records.find(r=>r.date===todayKey())||null;}
 
 // GPS距離計算（メートル）
