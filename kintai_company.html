@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v1.9.3　2026-08-28</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v2.0.0　2026-09-15</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -1426,6 +1426,13 @@ applyAdminUI();
 restoreDetailState();
 syncFromSheet();
 checkGPS();
+
+// GPSの定期自動更新（アプリを開きっぱなしにした場合の判定の古さ対策）
+// 問題があればこのフラグをfalseにするだけで元の動きに戻ります
+const GPS_AUTO_REFRESH_ENABLED = true;
+if (GPS_AUTO_REFRESH_ENABLED) {
+  setInterval(checkGPS, 30000);
+}
 // 5分ごとにGPS更新
 setInterval(checkGPS, 5*60*1000);
 clearInterval(timerInt);
