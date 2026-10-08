@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v2.0.0　2026-09-15</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v2.0.1　2026-10-08</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -277,6 +277,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
         <option value="2h_pm">午後2h休</option>
         <option value="3h">時間休3h</option>
         <option value="special">特別有給（特給）</option>
+        <option value="comp" disabled>代休（総務入力）</option>
       </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:1rem;">
@@ -598,7 +599,7 @@ async function sendToSheet(data){
       } catch(__) { ok = false; }
     }
     // 有給打刻時にスプレッドシートの有給残シートにも記録
-    if(ok && data.type === '有給' && data.leave !== 'special'){
+    if(ok && data.type === '有給' && data.leave !== 'special' && data.leave !== 'comp'){
       const leaveParams=new URLSearchParams({
         type:'recordLeave',
         name:data.name,
@@ -816,7 +817,7 @@ async function adminRefreshSummary(){
 }
 function saveWorkType(){localStorage.setItem('kintai_work_type', workType);}
 const LEAVE_MINS = {'all':475,'half':240,'1h':60,'2h':120,'3h':180,'special':475};
-const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','2h_am':'午前2h休','2h_pm':'午後2h休','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給'};
+const LEAVE_LABEL = {'all':'全日有給','half':'半日有給','half_am':'午前半休','half_pm':'午後半休','1h':'時間休1h','2h':'時間休2h','2h_am':'午前2h休','2h_pm':'午後2h休','3h':'時間休3h','3h_am':'3h休(午前)','3h_pm':'3h休(午後)','special':'特別有給','comp':'代休'};
 
 // 編集機能
 let editIdx = null;
@@ -1065,14 +1066,14 @@ function render(){
       if(twTimesEl) twTimesEl.textContent=`${t.in||'--:--'} → ${t.out||'--:--'}`;
     } else if(t && t.leave){
       if(twTypeEl) twTypeEl.textContent='';
-      if(twTimesEl) twTimesEl.textContent='本日は有給（全休）です';
+      if(twTimesEl) twTimesEl.textContent=(t.leave==='comp'?'本日は代休です':'本日は有給（全休）です');
     } else {
       if(twTypeEl) twTypeEl.textContent='';
       if(twTimesEl) twTimesEl.textContent='まだ出勤していません';
     }
   }
   if(!t || !t.in){
-    document.getElementById('statusText').textContent=(t&&t.leave)?'本日は有給（全休）です':'未打刻';
+    document.getElementById('statusText').textContent=(t&&t.leave)?(t.leave==='comp'?'本日は代休です':'本日は有給（全休）です'):'未打刻';
 
   } else if(t.in&&!t.out){
     const typeIcon={'出社':'','テレワーク':'🏠 ','出張等':'🚗 '};
