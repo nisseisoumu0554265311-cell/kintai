@@ -158,12 +158,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
   <!-- 詳細情報（GPS・今月の集計）：普段は折りたたみ -->
   <button id="infoToggle" onclick="toggleInfo()" style="width:100%;background:#fff;border:none;border-radius:14px;padding:.65rem 1rem;margin-bottom:.9rem;cursor:pointer;font-size:13px;color:#8E8E93;display:flex;justify-content:space-between;align-items:center;">
-    <span>詳細情報（GPS・今月の集計）</span>
+    <span id="infoLabel">詳細情報（GPS・今月の集計）</span>
     <span id="infoArrow">▾</span>
   </button>
   <div id="infoPanel" style="display:none;">
     <!-- GPS状態 -->
-    <div class="gps-card">
+    <div class="gps-card" id="gpsCard">
       <div class="gps-dot checking" id="gpsDot"></div>
       <div>
         <div class="gps-text" id="gpsText">位置情報を確認中...</div>
@@ -214,7 +214,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
   </div>
 
-  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v2.0.2　2026-10-09</div>
+  <div style="text-align:center;font-size:11px;color:#C7C7CC;margin-top:1.5rem;padding-bottom:.5rem;">v2.1.0　2026-10-15</div>
       </div>
 <div id="tabHistory" style="display:none;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding:0 2px;">
@@ -414,6 +414,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 const COMPANY_LAT = 35.610473;
 const COMPANY_LNG = 139.003107;
 const ALLOWED_RADIUS = 100; // メートル
+// ★ GPS判定の切り替え（1か所だけ変えれば元に戻せます）
+//   false = GPS廃止：出社(QR/ボタン)・出張等・テレワークを場所に関係なく押せる。退勤は出勤時の区分のまま。位置情報は取得しない
+//   true  = 従来のGPS判定：出社は会社内のみ、出張等・テレワークは会社外のみ、退勤時にGPSで区分を判定（複合あり）
+const GPS_GATE_ENABLED = false;
 // スプレッドシートのURL（後で設定）
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxcbxrq-NLgn8hiSNtWlB45CQ149No0sAeiX6YraNl4RI-rxEertLEykgNPCPh-CZmq8w/exec';
 const BREAK_MINS=65, WORK_START=8*60, WORK_END=17*60;
@@ -489,6 +493,22 @@ function setGPSStatus(status, text, sub){
 function updateButtons(){
   const t=getToday();
   const hasName=!!userName;
+  if(!GPS_GATE_ENABLED){
+    // GPS廃止：場所に関係なく、未打刻なら出社／テレワーク／出張等を選べる。勤務中は退勤のみ
+    const bIn=document.getElementById('btnIn'), bOut=document.getElementById('btnOut');
+    const bTW=document.getElementById('btnTelework'), bBiz=document.getElementById('btnBiz');
+    bIn.textContent='出社';
+    document.getElementById('outsideBtns').style.display='flex';
+    if(!t || !t.in){
+      bIn.disabled=!hasName; bOut.disabled=true; bTW.disabled=!hasName; bBiz.disabled=!hasName;
+    } else if(!t.out){
+      bIn.disabled=true; bOut.disabled=!hasName; bTW.disabled=true; bBiz.disabled=true;
+    } else {
+      bIn.disabled=true; bOut.disabled=true; bTW.disabled=true; bBiz.disabled=true;
+    }
+    return;
+  }
+  document.getElementById('btnIn').textContent='出勤';
   const isInside=gpsStatus==='inside';
   const isOutside=gpsStatus==='outside';
   const btnIn=document.getElementById('btnIn');
@@ -644,7 +664,7 @@ async function clockIn(){
     records.unshift({date:todayKey(),in:now,out:'',inType:'出社',outType:''});
   }
   save();
-  render();showToast('出勤打刻しました ✓');
+  render();showToast(GPS_GATE_ENABLED?'出勤打刻しました ✓':'🏢 出社で出勤しました ✓');
 }
 async function clockOut(){
   if(isSending){showToast('送信中です…');return;}
@@ -655,8 +675,15 @@ async function clockOut(){
   isSending=true;
   btn.disabled=true;btn.textContent='送信中…';
   const now=nowTimeStr();
-  const outType=gpsStatus==='inside'?'出社':'出張等';
-  const combinedType=t.inType===outType?t.inType:'複合('+t.inType+'→'+outType+')';
+  let outType, combinedType;
+  if(GPS_GATE_ENABLED){
+    outType=gpsStatus==='inside'?'出社':'出張等';
+    combinedType=t.inType===outType?t.inType:'複合('+t.inType+'→'+outType+')';
+  } else {
+    // GPS廃止：退勤時に区分は変えない（出勤時の区分のまま）
+    outType=['出社','テレワーク','出張等'].indexOf(t.inType)!==-1?t.inType:'出社';
+    combinedType=outType;
+  }
   let ok=false, message='';
   try{
     ({ok, message}=await sendToSheet({name:userName,date:todayKey(),type:'退勤',time:now,workType:combinedType,empType:workType}));
@@ -863,7 +890,7 @@ function openAddRecord(){
   editDateEl.min=period.start;
   editDateEl.max=period.end;
   editDateEl.readOnly=false;
-  document.getElementById('editWorkType').value='出社';
+  setEditWorkType('出社');
   initTimeSelects();
   setTimeSelectValue(document.getElementById('editInH'), document.getElementById('editInM'), '');
   setTimeSelectValue(document.getElementById('editOutH'), document.getElementById('editOutM'), '');
@@ -873,6 +900,15 @@ function openAddRecord(){
   document.getElementById('editOverlay').classList.add('open');
 }
 
+// 勤務区分の選択肢に無い値（旧「複合(出社→出張等)」など）も、一時的に選択肢へ加えて値を保つ（保存時に空で上書きされるのを防ぐ）
+function setEditWorkType(val){
+  const sel=document.getElementById('editWorkType');
+  Array.prototype.slice.call(sel.querySelectorAll('option[data-tmp]')).forEach(function(o){ o.remove(); });
+  if(!Array.prototype.some.call(sel.options,function(o){ return o.value===val; })){
+    const o=document.createElement('option'); o.value=val; o.textContent=val; o.setAttribute('data-tmp','1'); sel.appendChild(o);
+  }
+  sel.value=val;
+}
 function overlayTap(e){if(e.target===document.getElementById('editOverlay'))closeEdit();}
 
 function openEdit(idx){
@@ -885,7 +921,7 @@ function openEdit(idx){
   document.getElementById('editTitle').textContent=r.date+' の記録を編集';
   document.getElementById('editDate').value=r.date;
   document.getElementById('editDate').readOnly=true;
-  document.getElementById('editWorkType').value=r.inType||'出社';
+  setEditWorkType(r.inType||'出社');
   initTimeSelects();
   setTimeSelectValue(document.getElementById('editInH'), document.getElementById('editInM'), r.in||'');
   setTimeSelectValue(document.getElementById('editOutH'), document.getElementById('editOutM'), r.out||'');
@@ -1309,6 +1345,13 @@ async function qrPunch(){
     return;
   }
   qrPendingAction = action;
+  if(!GPS_GATE_ENABLED){
+    // GPS廃止：QRは位置確認なし。出勤は「出社」、退勤は出勤時の区分のまま
+    if(btn){ btn.disabled = false; btn.textContent = '打刻する'; }
+    const wtQr = action === 'in' ? '出社' : ((t && ['出社','テレワーク','出張等'].indexOf(t.inType) !== -1) ? t.inType : '出社');
+    qrRecord(wtQr);
+    return;
+  }
   // GPS判定
   const gps = await qrGetGps();
   if(btn){ btn.disabled = false; btn.textContent = '打刻する'; }
@@ -1426,16 +1469,25 @@ render();
 applyAdminUI();
 restoreDetailState();
 syncFromSheet();
-checkGPS();
-
-// GPSの定期自動更新（アプリを開きっぱなしにした場合の判定の古さ対策）
-// 問題があればこのフラグをfalseにするだけで元の動きに戻ります
-const GPS_AUTO_REFRESH_ENABLED = true;
-if (GPS_AUTO_REFRESH_ENABLED) {
-  setInterval(checkGPS, 30000);
+function applyNoGpsUI(){
+  // GPS廃止時：GPS表示欄を隠し、位置情報は一切取得しない
+  const gc=document.getElementById('gpsCard'); if(gc) gc.style.display='none';
+  const il=document.getElementById('infoLabel'); if(il) il.textContent='詳細情報（今月の集計）';
+  updateButtons();
 }
-// 5分ごとにGPS更新
-setInterval(checkGPS, 5*60*1000);
+if(GPS_GATE_ENABLED){
+  checkGPS();
+  // GPSの定期自動更新（アプリを開きっぱなしにした場合の判定の古さ対策）
+  // 問題があればこのフラグをfalseにするだけで元の動きに戻ります
+  const GPS_AUTO_REFRESH_ENABLED = true;
+  if (GPS_AUTO_REFRESH_ENABLED) {
+    setInterval(checkGPS, 30000);
+  }
+  // 5分ごとにGPS更新
+  setInterval(checkGPS, 5*60*1000);
+} else {
+  applyNoGpsUI();
+}
 clearInterval(timerInt);
 timerInt=setInterval(updateClock,1000);
 updateClock();
